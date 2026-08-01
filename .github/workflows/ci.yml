@@ -34,6 +34,10 @@ jobs:
         with:
           key: ${{ matrix.os }}
 
+      - name: Install rustfmt and clippy components
+        # mise's rustup-provisioned toolchain doesn't install these by default on CI runners.
+        run: mise x -- rustup component add rustfmt clippy
+
       - name: Check formatting
         run: mise x -- cargo fmt --all -- --check
 
