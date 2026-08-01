@@ -17,12 +17,17 @@ const GAMES: &[&str] = &[
     "Solitaire",
 ];
 
+const GAMES_PER_ROW: usize = 3;
+
 const NORMAL_BUTTON: Color = Color::srgb(0.2, 0.2, 0.25);
 const HOVERED_BUTTON: Color = Color::srgb(0.3, 0.3, 0.4);
 const PRESSED_BUTTON: Color = Color::srgb(0.15, 0.5, 0.25);
 
+#[cfg(not(target_arch = "wasm32"))]
 const QUIT_BUTTON: Color = Color::srgb(0.35, 0.15, 0.15);
+#[cfg(not(target_arch = "wasm32"))]
 const QUIT_BUTTON_HOVERED: Color = Color::srgb(0.5, 0.2, 0.2);
+#[cfg(not(target_arch = "wasm32"))]
 const QUIT_BUTTON_PRESSED: Color = Color::srgb(0.6, 0.1, 0.1);
 
 pub struct MenuPlugin;
@@ -32,14 +37,16 @@ impl Plugin for MenuPlugin {
         app.add_systems(OnEnter(AppState::Menu), spawn_menu)
             .add_systems(
                 Update,
-                (
-                    game_button_interaction,
-                    quit_button_interaction,
-                    tooltip_visibility,
-                )
-                    .run_if(in_state(AppState::Menu)),
+                (game_button_interaction, tooltip_visibility).run_if(in_state(AppState::Menu)),
             )
             .add_systems(OnExit(AppState::Menu), despawn_menu);
+
+        // The web build has no process to quit; players just close the browser tab.
+        #[cfg(not(target_arch = "wasm32"))]
+        app.add_systems(
+            Update,
+            quit_button_interaction.run_if(in_state(AppState::Menu)),
+        );
     }
 }
 
@@ -49,6 +56,7 @@ struct OnMenuScreen;
 #[derive(Component)]
 struct GameButton;
 
+#[cfg(not(target_arch = "wasm32"))]
 #[derive(Component)]
 struct QuitButton;
 
@@ -85,65 +93,79 @@ fn spawn_menu(mut commands: Commands) {
                 TextColor(Color::WHITE),
             ));
 
-            // Game buttons laid out side by side, wrapping to new rows as needed.
+            // Game buttons laid out in fixed-size rows of 3. Explicit rows (rather than a
+            // single `flex_wrap: Wrap` container) sidestep a taffy/bevy_ui layout bug where a
+            // wrapped container's reported height doesn't include its later wrapped lines,
+            // which made the Quit button overlap whatever row happened to be last measured.
             parent
                 .spawn(Node {
-                    flex_direction: FlexDirection::Row,
-                    flex_wrap: FlexWrap::Wrap,
-                    justify_content: JustifyContent::Center,
-                    column_gap: Val::Px(16.0),
+                    flex_direction: FlexDirection::Column,
+                    align_items: AlignItems::Center,
                     row_gap: Val::Px(16.0),
                     width: Val::Percent(100.0),
                     max_width: Val::Px(700.0),
                     ..default()
                 })
-                .with_children(|row| {
-                    for &game in GAMES {
-                        row.spawn((
-                            GameButton,
-                            Button,
-                            Node {
-                                width: Val::Px(200.0),
-                                padding: UiRect::all(Val::Px(12.0)),
-                                justify_content: JustifyContent::Center,
-                                align_items: AlignItems::Center,
-                                ..default()
-                            },
-                            BackgroundColor(NORMAL_BUTTON),
-                        ))
-                        .with_children(|button| {
-                            button.spawn((
-                                Text::new(game),
-                                TextFont {
-                                    font_size: FontSize::Px(24.0),
-                                    ..default()
-                                },
-                                TextColor(Color::WHITE),
-                            ));
+                .with_children(|grid| {
+                    for row_games in GAMES.chunks(GAMES_PER_ROW) {
+                        grid.spawn(Node {
+                            flex_direction: FlexDirection::Row,
+                            justify_content: JustifyContent::Center,
+                            column_gap: Val::Px(16.0),
+                            width: Val::Percent(100.0),
+                            ..default()
+                        })
+                        .with_children(|row| {
+                            for &game in row_games {
+                                row.spawn((
+                                    GameButton,
+                                    Button,
+                                    Node {
+                                        width: Val::Px(200.0),
+                                        min_width: Val::Px(80.0),
+                                        padding: UiRect::all(Val::Px(12.0)),
+                                        justify_content: JustifyContent::Center,
+                                        align_items: AlignItems::Center,
+                                        ..default()
+                                    },
+                                    BackgroundColor(NORMAL_BUTTON),
+                                ))
+                                .with_children(|button| {
+                                    button.spawn((
+                                        Text::new(game),
+                                        TextFont {
+                                            font_size: FontSize::Px(24.0),
+                                            ..default()
+                                        },
+                                        TextColor(Color::WHITE),
+                                    ));
 
-                            // Hidden until the button is hovered; every game is a
-                            // placeholder for now, so the tooltip text is fixed.
-                            button.spawn((
-                                Tooltip,
-                                Visibility::Hidden,
-                                Text::new("Work in progress"),
-                                TextFont {
-                                    font_size: FontSize::Px(16.0),
-                                    ..default()
-                                },
-                                TextColor(Color::WHITE),
-                                Node {
-                                    position_type: PositionType::Absolute,
-                                    top: Val::Px(-28.0),
-                                    padding: UiRect::axes(Val::Px(8.0), Val::Px(4.0)),
-                                    ..default()
-                                },
-                                BackgroundColor(Color::BLACK.with_alpha(0.85)),
-                            ));
+                                    // Hidden until the button is hovered; every game is a
+                                    // placeholder for now, so the tooltip text is fixed.
+                                    button.spawn((
+                                        Tooltip,
+                                        Visibility::Hidden,
+                                        Text::new("Work in progress"),
+                                        TextFont {
+                                            font_size: FontSize::Px(16.0),
+                                            ..default()
+                                        },
+                                        TextColor(Color::WHITE),
+                                        Node {
+                                            position_type: PositionType::Absolute,
+                                            top: Val::Px(-28.0),
+                                            padding: UiRect::axes(Val::Px(8.0), Val::Px(4.0)),
+                                            ..default()
+                                        },
+                                        BackgroundColor(Color::BLACK.with_alpha(0.85)),
+                                    ));
+                                });
+                            }
                         });
                     }
                 });
 
+            #[cfg(not(target_arch = "wasm32"))]
             parent
                 .spawn((
                     QuitButton,
@@ -187,6 +209,7 @@ fn game_button_interaction(
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[allow(clippy::type_complexity)]
 fn quit_button_interaction(
     mut buttons: Query<

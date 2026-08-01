@@ -1,0 +1,233 @@
+name: Release
+
+# Cross-platform release build, published to GitHub Releases and (if configured) itch.io.
+#
+# Triggered by pushing a tag like `v0.1.0`. To wire up itch.io publishing:
+#   - set the repo variable ITCH_TARGET to your `user/game` itch.io slug
+#   - set the repo secret BUTLER_API_KEY to an itch.io API key (https://itch.io/user/settings/api-keys)
+# Without both of those, the itch job is skipped and only the GitHub Release is created.
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  BIN_NAME: tabletop_tavern
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libasound2-dev libudev-dev pkg-config
+
+      - uses: jdx/mise-action@v2
+        with:
+          cache: true
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: linux-x86_64
+
+      - name: Build
+        run: mise x -- cargo build --release --target x86_64-unknown-linux-gnu
+
+      - name: Assemble dist directory
+        run: |
+          mkdir -p dist/linux-x86_64
+          cp target/x86_64-unknown-linux-gnu/release/$BIN_NAME dist/linux-x86_64/
+
+      - name: Package archive
+        run: tar -C dist/linux-x86_64 -czf $BIN_NAME-linux-x86_64.tar.gz .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-x86_64
+          path: dist/linux-x86_64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-x86_64-archive
+          path: ${{ env.BIN_NAME }}-linux-x86_64.tar.gz
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: jdx/mise-action@v2
+        with:
+          cache: true
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: windows-x86_64
+
+      - name: Build
+        run: mise x -- cargo build --release --target x86_64-pc-windows-msvc
+
+      - name: Assemble dist directory
+        shell: bash
+        run: |
+          mkdir -p dist/windows-x86_64
+          cp target/x86_64-pc-windows-msvc/release/$BIN_NAME.exe dist/windows-x86_64/
+
+      - name: Package archive
+        shell: bash
+        run: 7z a $BIN_NAME-windows-x86_64.zip ./dist/windows-x86_64/*
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x86_64
+          path: dist/windows-x86_64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x86_64-archive
+          path: ${{ env.BIN_NAME }}-windows-x86_64.zip
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: jdx/mise-action@v2
+        with:
+          cache: true
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: macos-universal
+
+      - name: Add Rust targets
+        run: |
+          mise x -- rustup target add x86_64-apple-darwin
+          mise x -- rustup target add aarch64-apple-darwin
+
+      - name: Build (Intel)
+        run: mise x -- cargo build --release --target x86_64-apple-darwin
+
+      - name: Build (Apple Silicon)
+        run: mise x -- cargo build --release --target aarch64-apple-darwin
+
+      - name: Combine into a universal binary
+        run: |
+          mkdir -p dist/macos-universal
+          lipo -create -output dist/macos-universal/$BIN_NAME \
+            target/x86_64-apple-darwin/release/$BIN_NAME \
+            target/aarch64-apple-darwin/release/$BIN_NAME
+
+      - name: Package archive
+        run: (cd dist/macos-universal && zip -r ../../$BIN_NAME-macos-universal.zip .)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-universal
+          path: dist/macos-universal
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-universal-archive
+          path: ${{ env.BIN_NAME }}-macos-universal.zip
+
+  build-wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: jdx/mise-action@v2
+        with:
+          cache: true
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: wasm32
+
+      - name: Add wasm32 target
+        run: mise x -- rustup target add wasm32-unknown-unknown
+
+      - name: Build
+        run: mise x -- cargo build --release --target wasm32-unknown-unknown
+
+      - name: Install matching wasm-bindgen-cli
+        # wasm-bindgen-cli must exactly match the `wasm-bindgen` crate version resolved in
+        # Cargo.lock, or it refuses to process the wasm binary (schema-version mismatch). mise
+        # pins a version that should already match, but this keeps the build correct even if
+        # Cargo.lock's wasm-bindgen version drifts from mise.toml.
+        run: |
+          WASM_BINDGEN_VERSION=$(grep -A1 '^name = "wasm-bindgen"$' Cargo.lock | grep '^version' | head -1 | sed -E 's/version = "(.*)"/\1/')
+          mise x -- cargo install wasm-bindgen-cli --version "$WASM_BINDGEN_VERSION" --locked
+
+      - name: Run wasm-bindgen
+        run: |
+          mkdir -p dist/web
+          # Invoked by absolute path rather than `mise x -- wasm-bindgen`: the version-matched
+          # install above lands in $CARGO_HOME/bin, and we need that copy specifically, not
+          # whichever wasm-bindgen-cli mise's own PATH ordering would otherwise pick up.
+          "$HOME/.cargo/bin/wasm-bindgen" --target web --out-dir dist/web --out-name $BIN_NAME \
+            target/wasm32-unknown-unknown/release/$BIN_NAME.wasm
+
+      - name: Optimize wasm with wasm-opt
+        run: mise x -- wasm-opt -Oz -o dist/web/${BIN_NAME}_bg.wasm dist/web/${BIN_NAME}_bg.wasm
+
+      - name: Add index.html
+        run: cp web/index.html dist/web/
+
+      - name: Package archive
+        run: (cd dist/web && zip -r ../../$BIN_NAME-web.zip .)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web
+          path: dist/web
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-archive
+          path: ${{ env.BIN_NAME }}-web.zip
+
+  github-release:
+    needs: [build-linux, build-windows, build-macos, build-wasm]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: "*-archive"
+          path: archives
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: archives/*/*
+          generate_release_notes: true
+
+  itch-release:
+    needs: [build-linux, build-windows, build-macos, build-wasm]
+    runs-on: ubuntu-latest
+    if: vars.ITCH_TARGET != ''
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - uses: jdx/mise-action@v2
+        with:
+          cache: true
+
+      - name: Push builds to itch.io
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: |
+          VERSION="${{ github.ref_name }}"
+          mise x -- butler push dist/linux-x86_64 "${{ vars.ITCH_TARGET }}:linux" --userversion "$VERSION"
+          mise x -- butler push dist/windows-x86_64 "${{ vars.ITCH_TARGET }}:windows" --userversion "$VERSION"
+          mise x -- butler push dist/macos-universal "${{ vars.ITCH_TARGET }}:mac" --userversion "$VERSION"
+          mise x -- butler push dist/web "${{ vars.ITCH_TARGET }}:html5" --userversion "$VERSION"

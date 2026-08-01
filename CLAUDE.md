@@ -29,6 +29,22 @@ toolchain.
   apply (e.g. `TextFont.font_size` is a `FontSize` enum, not `f32`; events are
   now `Message`/`MessageWriter`, not `Event`/`EventWriter`).
 
+## CI/CD
+
+- `.github/workflows/ci.yml` — fmt/clippy/test/build on every push and PR,
+  across Linux/macOS/Windows. Keep `cargo fmt --all` clean before pushing;
+  CI fails on unformatted code.
+- `.github/workflows/release.yml` — triggered by a `v*.*.*` tag. Cross-builds
+  Linux/Windows/macOS-universal/web, publishes to GitHub Releases, and (if
+  `ITCH_TARGET`/`BUTLER_API_KEY` are set) pushes each build to itch.io via
+  `butler`.
+- The web build's `wasm-bindgen-cli` version must exactly match the
+  `wasm-bindgen` crate version in `Cargo.lock` (schema-version check). The
+  release workflow re-installs a matching `wasm-bindgen-cli` in CI rather
+  than trusting mise's pin, in case they drift after a `cargo update`. If you
+  bump bevy/wasm-bindgen locally, update `mise.toml`'s
+  `cargo:wasm-bindgen-cli` pin to match too.
+
 ## Git
 
 - Never add a co-author trailer (e.g. "Co-Authored-By: Claude") to commits.
