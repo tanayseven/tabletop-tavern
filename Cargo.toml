@@ -1,0 +1,16 @@
+[package]
+name = "tabletop_tavern"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = "0.19"
+
+# Bevy's recommended dev-build settings: keep our own code unoptimized for fast
+# incremental compiles, but optimize dependencies (which rarely change) so the
+# game still runs at a usable frame rate during development.
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3

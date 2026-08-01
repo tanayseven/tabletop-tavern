@@ -1,0 +1,22 @@
+[settings]
+# Fail instead of silently updating mise.lock when versions drift,
+# so every clone/CI run resolves to exactly what's pinned.
+lockfile = true
+experimental = true
+
+[tools]
+# The Rust toolchain: rustc + std + cargo (mise's `rust` backend bundles cargo, so no separate
+# `cargo` entry is needed). This is what Bevy and the rest of the crate graph build against.
+rust = "latest"
+# Compiles Rust->WASM glue code so the Bevy game can run in the browser (e.g. itch.io web builds).
+"cargo:wasm-bindgen-cli" = "latest"
+# itch.io's official CLI for pushing game builds to itch.io from the command line.
+"ubi:itchio/butler" = "latest"
+# WASM optimizer/toolchain (wasm-opt etc.) used to shrink and speed up the compiled web build.
+# `exe = "wasm-opt"` is required because the release archive has no binary literally named
+# `binaryen` — ubi needs to be told which extracted entry to expose.
+"ubi:WebAssembly/binaryen" = { version = "latest", exe = "wasm-opt" }
+
+[tasks.run]
+description = "Run Tabletop Tavern"
+run = "cargo run"
