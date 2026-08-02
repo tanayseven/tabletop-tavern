@@ -16,8 +16,10 @@ rust = "1.97.1"
 "ubi:itchio/butler" = "15.30.0"
 # WASM optimizer/toolchain (wasm-opt etc.) used to shrink and speed up the compiled web build.
 # `exe = "wasm-opt"` is required because the release archive has no binary literally named
-# `binaryen` — ubi needs to be told which extracted entry to expose.
-"ubi:WebAssembly/binaryen" = { version = "1.39.1", exe = "wasm-opt" }
+# `binaryen` — ubi needs to be told which extracted entry to expose. Must be pinned to the exact
+# release tag (e.g. "version_131"): ubi's "latest" resolution mis-sorts this repo's tags and
+# picks an ancient "1.39.1" release whose wasm-opt is too old to parse modern wasm output.
+"ubi:WebAssembly/binaryen" = { version = "version_131", exe = "wasm-opt" }
 
 [tasks.run]
 description = "Run Tabletop Tavern"

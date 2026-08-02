@@ -9,7 +9,7 @@ version = "1.97.1"
 backend = "core:rust"
 
 [[tools."ubi:WebAssembly/binaryen"]]
-version = "1.39.1"
+version = "version_131"
 backend = "ubi:WebAssembly/binaryen"
 
 [tools."ubi:WebAssembly/binaryen".options]
