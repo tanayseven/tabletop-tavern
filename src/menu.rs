@@ -1,6 +1,7 @@
 use bevy::prelude::*;
+use bevy::window::{PrimaryWindow, WindowResized};
 
-use crate::AppState;
+use crate::{AppState, Scrollable};
 
 /// Placeholder catalog of games shown on the menu. Swap this out once real
 /// games are wired up behind each entry.
@@ -18,6 +19,19 @@ const GAMES: &[&str] = &[
 ];
 
 const GAMES_PER_ROW: usize = 3;
+
+// Game buttons are squares sized as a percentage of the smaller viewport dimension (vmin), so
+// they scale with the window instead of overflowing a shrunk one or looking tiny on a large one.
+// The min/max clamp keeps them from becoming unreadably small or comically large at extreme
+// window sizes/aspect ratios.
+const GAME_BUTTON_VMIN: f32 = 14.0;
+const GAME_BUTTON_MIN_PX: f32 = 72.0;
+const GAME_BUTTON_MAX_PX: f32 = 160.0;
+
+// The label font scales as a fixed fraction of the (already clamped) button size, so it grows
+// and shrinks in lockstep with the square instead of drifting out of proportion at the extremes
+// where the button size is clamped but a plain vmin-based font size would keep changing.
+const GAME_BUTTON_LABEL_RATIO: f32 = 0.12;
 
 const NORMAL_BUTTON: Color = Color::srgb(0.2, 0.2, 0.25);
 const HOVERED_BUTTON: Color = Color::srgb(0.3, 0.3, 0.4);
@@ -37,7 +51,12 @@ impl Plugin for MenuPlugin {
         app.add_systems(OnEnter(AppState::Menu), spawn_menu)
             .add_systems(
                 Update,
-                (game_button_interaction, tooltip_visibility).run_if(in_state(AppState::Menu)),
+                (
+                    game_button_interaction,
+                    tooltip_visibility,
+                    resize_game_button_labels,
+                )
+                    .run_if(in_state(AppState::Menu)),
             )
             .add_systems(OnExit(AppState::Menu), despawn_menu);
 
@@ -63,10 +82,25 @@ struct QuitButton;
 #[derive(Component)]
 struct Tooltip;
 
-fn spawn_menu(mut commands: Commands) {
+#[derive(Component)]
+struct GameButtonLabel;
+
+fn game_button_size(window: &Window) -> f32 {
+    (window.width().min(window.height()) * GAME_BUTTON_VMIN / 100.0)
+        .clamp(GAME_BUTTON_MIN_PX, GAME_BUTTON_MAX_PX)
+}
+
+fn spawn_menu(mut commands: Commands, windows: Query<&Window, With<PrimaryWindow>>) {
+    let label_font_size = windows
+        .single()
+        .map(game_button_size)
+        .unwrap_or(GAME_BUTTON_MIN_PX)
+        * GAME_BUTTON_LABEL_RATIO;
+
     commands
         .spawn((
             OnMenuScreen,
+            Scrollable,
             Node {
                 width: Val::Percent(100.0),
                 height: Val::Percent(100.0),
@@ -121,8 +155,12 @@ fn spawn_menu(mut commands: Commands) {
                                     GameButton,
                                     Button,
                                     Node {
-                                        width: Val::Px(200.0),
-                                        min_width: Val::Px(80.0),
+                                        width: Val::VMin(GAME_BUTTON_VMIN),
+                                        height: Val::VMin(GAME_BUTTON_VMIN),
+                                        min_width: Val::Px(GAME_BUTTON_MIN_PX),
+                                        min_height: Val::Px(GAME_BUTTON_MIN_PX),
+                                        max_width: Val::Px(GAME_BUTTON_MAX_PX),
+                                        max_height: Val::Px(GAME_BUTTON_MAX_PX),
                                         padding: UiRect::all(Val::Px(12.0)),
                                         justify_content: JustifyContent::Center,
                                         align_items: AlignItems::Center,
@@ -132,12 +170,14 @@ fn spawn_menu(mut commands: Commands) {
                                 ))
                                 .with_children(|button| {
                                     button.spawn((
+                                        GameButtonLabel,
                                         Text::new(game),
                                         TextFont {
-                                            font_size: FontSize::Px(24.0),
+                                            font_size: FontSize::Px(label_font_size),
                                             ..default()
                                         },
                                         TextColor(Color::WHITE),
+                                        TextLayout::justify(Justify::Center),
                                     ));
 
                                     // Hidden until the button is hovered; every game is a
@@ -245,6 +285,23 @@ fn tooltip_visibility(
                 *tooltip_visibility = visibility;
             }
         }
+    }
+}
+
+fn resize_game_button_labels(
+    mut resize_events: MessageReader<WindowResized>,
+    windows: Query<&Window, With<PrimaryWindow>>,
+    mut labels: Query<&mut TextFont, With<GameButtonLabel>>,
+) {
+    if resize_events.read().count() == 0 {
+        return;
+    }
+    let Ok(window) = windows.single() else {
+        return;
+    };
+    let font_size = game_button_size(window) * GAME_BUTTON_LABEL_RATIO;
+    for mut text_font in &mut labels {
+        text_font.font_size = FontSize::Px(font_size);
     }
 }
 
