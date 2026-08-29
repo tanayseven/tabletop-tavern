@@ -45,6 +45,12 @@ toolchain.
   bump bevy/wasm-bindgen locally, update `mise.toml`'s
   `cargo:wasm-bindgen-cli` pin to match too.
 
+## Docs
+
+- `docs/*.md` game design/planning documents describe scope, rules, and
+  behavior only — no code-specific details (file paths, function/type names,
+  code blocks). They should stay readable to someone who doesn't read code.
+
 ## Git
 
 - Never add a co-author trailer (e.g. "Co-Authored-By: Claude") to commits.
