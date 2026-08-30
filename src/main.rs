@@ -1,15 +1,18 @@
 mod menu;
 mod splash;
+mod tic_tac_toe;
+mod ui;
 
-use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
+use bevy::input::mouse::MouseMotion;
 use bevy::prelude::*;
 
 const APP_NAME: &str = "Tabletop Tavern";
 
 /// Marks a scrollable `Node` (one with `Overflow::Scroll` on at least one axis) so
-/// [`scroll_with_mouse_wheel`] knows to drive its `ScrollPosition` from wheel input. Without this,
-/// `Overflow::Scroll` only clips overflowing content — nothing lets the player actually reach it,
-/// which matters once a screen's content no longer fits a shrunk window.
+/// [`scroll_by_dragging`] knows to drive its `ScrollPosition` from a click-and-drag gesture.
+/// Mouse-wheel scrolling is handled separately by Bevy's own `ui_widgets::ScrollArea`. Without
+/// either, `Overflow::Scroll` only clips overflowing content — nothing lets the player actually
+/// reach it, which matters once a screen's content no longer fits a shrunk window.
 #[derive(Component)]
 pub(crate) struct Scrollable;
 
@@ -19,6 +22,11 @@ pub(crate) enum AppState {
     #[default]
     Splash,
     Menu,
+    TicTacToeModeSelect,
+    TicTacToeDifficultySelect,
+    TicTacToeCoinToss,
+    TicTacToeSymbolChoice,
+    TicTacToe,
 }
 
 fn main() {
@@ -34,8 +42,13 @@ fn main() {
         }))
         .init_state::<AppState>()
         .add_systems(Startup, spawn_camera)
-        .add_systems(Update, scroll_with_mouse_wheel)
-        .add_plugins((splash::SplashPlugin, menu::MenuPlugin))
+        .add_systems(Update, scroll_by_dragging)
+        .add_plugins((
+            splash::SplashPlugin,
+            menu::MenuPlugin,
+            tic_tac_toe::TicTacToeSetupPlugin,
+            tic_tac_toe::TicTacToePlugin,
+        ))
         .run();
 }
 
@@ -43,18 +56,24 @@ fn spawn_camera(mut commands: Commands) {
     commands.spawn(Camera2d);
 }
 
-fn scroll_with_mouse_wheel(
-    mut wheel_events: MessageReader<MouseWheel>,
+/// Click-and-drag scrolling: while the left mouse button is held, the content tracks the cursor
+/// (drag down to reveal what's above, drag up to reveal what's below), the same feel as touch
+/// scrolling. Motion events are drained every frame regardless of button state so a drag that
+/// starts later doesn't inherit a backlog of stale motion.
+fn scroll_by_dragging(
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
+    mut motion_events: MessageReader<MouseMotion>,
     mut scrollables: Query<&mut ScrollPosition, With<Scrollable>>,
 ) {
-    for event in wheel_events.read() {
-        let delta = match event.unit {
-            MouseScrollUnit::Line => Vec2::new(event.x, event.y) * 20.0,
-            MouseScrollUnit::Pixel => Vec2::new(event.x, event.y),
-        };
-        for mut scroll_position in &mut scrollables {
-            scroll_position.x -= delta.x;
-            scroll_position.y -= delta.y;
-        }
+    let mut delta = Vec2::ZERO;
+    for event in motion_events.read() {
+        delta += event.delta;
+    }
+    if !mouse_buttons.pressed(MouseButton::Left) || delta == Vec2::ZERO {
+        return;
+    }
+    for mut scroll_position in &mut scrollables {
+        scroll_position.x -= delta.x;
+        scroll_position.y -= delta.y;
     }
 }
