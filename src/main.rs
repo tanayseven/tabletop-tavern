@@ -1,3 +1,4 @@
+mod loading;
 mod menu;
 mod splash;
 mod tic_tac_toe;
@@ -21,6 +22,7 @@ pub(crate) struct Scrollable;
 pub(crate) enum AppState {
     #[default]
     Splash,
+    Loading,
     Menu,
     TicTacToeModeSelect,
     TicTacToeDifficultySelect,
@@ -45,6 +47,7 @@ fn main() {
         .add_systems(Update, scroll_by_dragging)
         .add_plugins((
             splash::SplashPlugin,
+            loading::LoadingPlugin,
             menu::MenuPlugin,
             tic_tac_toe::TicTacToeSetupPlugin,
             tic_tac_toe::TicTacToePlugin,

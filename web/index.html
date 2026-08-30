@@ -16,12 +16,98 @@
         width: 100vw;
         height: 100vh;
       }
+      #loading-overlay {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        background: #0a0a0a;
+        color: #fff;
+        font-family: sans-serif;
+      }
+      #loading-track {
+        width: 300px;
+        height: 20px;
+        background: #333340;
+      }
+      #loading-fill {
+        width: 0%;
+        height: 100%;
+        background: #268040;
+        transition: width 0.1s linear;
+      }
     </style>
   </head>
   <body>
+    <div id="loading-overlay">
+      <div id="loading-label">Loading...</div>
+      <div id="loading-track">
+        <div id="loading-fill"></div>
+      </div>
+    </div>
     <script type="module">
       import init from "./tabletop_tavern.js";
-      init();
+
+      const overlay = document.getElementById("loading-overlay");
+      const label = document.getElementById("loading-label");
+      const fill = document.getElementById("loading-fill");
+
+      // The compiled wasm binary is by far the largest single download a player waits on before
+      // the game can start, so it's what this progress bar tracks. `init()`'s own fetch has no
+      // progress hook, so the module is fetched by hand here (reading the response body in
+      // chunks against its Content-Length) and handed to `init` as raw bytes instead.
+      async function fetchWasmWithProgress(url) {
+        const response = await fetch(url);
+        if (!response.ok || !response.body) {
+          throw new Error(`Failed to fetch ${url}: ${response.status}`);
+        }
+
+        const totalBytes = Number(response.headers.get("content-length")) || 0;
+        const reader = response.body.getReader();
+        const chunks = [];
+        let receivedBytes = 0;
+
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          chunks.push(value);
+          receivedBytes += value.length;
+
+          if (totalBytes > 0) {
+            const percent = Math.round((receivedBytes / totalBytes) * 100);
+            fill.style.width = `${percent}%`;
+            label.textContent = `Loading... ${percent}%`;
+          } else {
+            const megabytes = (receivedBytes / 1_000_000).toFixed(1);
+            label.textContent = `Loading... ${megabytes} MB`;
+          }
+        }
+
+        const bytes = new Uint8Array(receivedBytes);
+        let offset = 0;
+        for (const chunk of chunks) {
+          bytes.set(chunk, offset);
+          offset += chunk.length;
+        }
+        return bytes.buffer;
+      }
+
+      async function start() {
+        try {
+          const wasmBytes = await fetchWasmWithProgress("./tabletop_tavern_bg.wasm");
+          await init({ module_or_path: wasmBytes });
+          overlay.remove();
+        } catch (error) {
+          label.textContent = "Failed to load. Please refresh the page.";
+          throw error;
+        }
+      }
+
+      start();
     </script>
   </body>
 </html>

@@ -94,11 +94,10 @@ Four levels, from least to most challenging:
 ## Menu integration
 
 Today every game in the menu is a placeholder — every button just shows a
-"Work in progress" tooltip on hover, regardless of which game it is. Tic Tac
-Toe becomes the first exception: its button leads into an actual game
-instead of showing that tooltip, while every other game keeps behaving
-exactly as it does now. Nothing about the menu's overall look or the other
-nine games changes.
+grayed-out "Coming soon" label, regardless of which game it is. Tic Tac Toe
+becomes the first exception: its button leads into an actual game instead of
+that label, while every other game keeps behaving exactly as it does now.
+Nothing about the menu's overall look or the other nine games changes.
 
 ## Layout notes
 

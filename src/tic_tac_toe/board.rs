@@ -73,15 +73,19 @@ impl Board {
         true
     }
 
-    pub fn status(&self) -> Status {
-        for line in WINNING_LINES {
+    /// The completed line of three cell indices, if any — the same line `status()` reports as a
+    /// win, exposed separately so callers (e.g. drawing a strike-through) know exactly which
+    /// three cells to span rather than just that someone won.
+    pub fn winning_line(&self) -> Option<[usize; 3]> {
+        WINNING_LINES.into_iter().find(|line| {
             let marks = line.map(|i| self.cells[i]);
-            if let [Some(a), Some(b), Some(c)] = marks
-                && a == b
-                && b == c
-            {
-                return Status::Won(a);
-            }
+            matches!(marks, [Some(a), Some(b), Some(c)] if a == b && b == c)
+        })
+    }
+
+    pub fn status(&self) -> Status {
+        if let Some(line) = self.winning_line() {
+            return Status::Won(self.cells[line[0]].unwrap());
         }
         if self.cells.iter().all(Option::is_some) {
             Status::Draw
@@ -161,6 +165,15 @@ mod tests {
             }
         }
         assert_eq!(board.status(), Status::Won(winner));
+        assert_eq!(board.winning_line(), Some(line));
+    }
+
+    #[test]
+    fn winning_line_is_none_before_a_win() {
+        let mut board = Board::default();
+        assert_eq!(board.winning_line(), None);
+        board.place(0, Player::X);
+        assert_eq!(board.winning_line(), None);
     }
 
     #[test]

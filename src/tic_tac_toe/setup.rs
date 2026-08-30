@@ -43,6 +43,9 @@ pub struct TicTacToeSetup {
     pub starting_player: Option<Player>,
     /// `Some(mark)` only in PvC — the mark the computer is playing.
     pub computer_symbol: Option<Player>,
+    /// `Some(mark)` only in PvP — the mark assigned to Player 1 (the human who called the coin
+    /// toss). Lets the scoreboard map a round's winning mark back to "Player 1" vs "Player 2".
+    pub player_one_symbol: Option<Player>,
 }
 
 pub struct TicTacToeSetupPlugin;
@@ -205,8 +208,13 @@ fn spawn_mode_select(mut commands: Commands) {
                         row.spawn((
                             ModeButton(mode),
                             Button,
+                            // Wide enough to fit "Player vs Computer" (the longer label) on a
+                            // single line with room to spare, and a fixed height so the button
+                            // stays a short, uniform box rather than growing to whatever its
+                            // label needs.
                             Node {
-                                width: Val::Px(220.0),
+                                width: Val::Px(260.0),
+                                height: Val::Px(56.0),
                                 padding: UiRect::all(Val::Px(12.0)),
                                 justify_content: JustifyContent::Center,
                                 align_items: AlignItems::Center,
@@ -222,6 +230,10 @@ fn spawn_mode_select(mut commands: Commands) {
                                     ..default()
                                 },
                                 TextColor(Color::WHITE),
+                                TextLayout {
+                                    linebreak: LineBreak::NoWrap,
+                                    ..default()
+                                },
                             ));
                         });
                     }
@@ -608,6 +620,7 @@ fn coin_toss_back_click(
         setup.caller_won_toss = None;
         setup.starting_player = None;
         setup.computer_symbol = None;
+        setup.player_one_symbol = None;
         let target = match setup.mode {
             Some(GameMode::Pvc(_)) => AppState::TicTacToeDifficultySelect,
             _ => AppState::TicTacToeModeSelect,
@@ -688,6 +701,14 @@ fn symbol_choice_button_click(
         setup.starting_player = Some(*player);
         if matches!(setup.mode, Some(GameMode::Pvc(_))) {
             setup.computer_symbol = Some(player.other());
+        } else {
+            // In PvP, whoever won the coin toss is the one choosing here: Player 1 if they
+            // called it, Player 2 if the caller lost. So Player 1's mark is the chosen one only
+            // when the caller won; otherwise it's the mark the caller's opponent didn't pick.
+            let caller_won = setup
+                .caller_won_toss
+                .expect("the toss is always called before Symbol Choice is reachable");
+            setup.player_one_symbol = Some(if caller_won { *player } else { player.other() });
         }
         next_state.set(AppState::TicTacToe);
     }
@@ -711,6 +732,7 @@ fn symbol_choice_back_click(
         setup.caller_won_toss = None;
         setup.starting_player = None;
         setup.computer_symbol = None;
+        setup.player_one_symbol = None;
         next_state.set(AppState::TicTacToeCoinToss);
     }
 }

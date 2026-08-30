@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy::ui_widgets::ScrollArea;
-use bevy::window::{PrimaryWindow, WindowResized};
+use bevy::window::{CursorIcon, PrimaryWindow, SystemCursorIcon, WindowResized};
 
 use crate::ui::square_button_size;
 use crate::{AppState, Scrollable};
@@ -17,22 +17,22 @@ struct GameEntry {
 }
 
 /// Catalog of games shown on the menu. Entries with `id: None` are placeholders that show a
-/// "Work in progress" tooltip; give an entry a `GameId` to wire its button into a real screen.
+/// "Coming soon" label; give an entry a `GameId` to wire its button into a real screen.
 const GAMES: &[GameEntry] = &[
-    GameEntry {
-        name: "Mini Sudoku",
-        id: None,
-    },
-    GameEntry {
-        name: "Sudoku",
-        id: None,
-    },
     GameEntry {
         name: "Tic Tac Toe",
         id: Some(GameId::TicTacToe),
     },
     GameEntry {
         name: "Advanced Tic Tac Toe",
+        id: None,
+    },
+    GameEntry {
+        name: "Mini Sudoku",
+        id: None,
+    },
+    GameEntry {
+        name: "Sudoku",
         id: None,
     },
     GameEntry {
@@ -102,13 +102,13 @@ impl Plugin for MenuPlugin {
                 Update,
                 (
                     game_button_interaction,
-                    tooltip_visibility,
                     resize_game_button_labels,
                     playable_game_button_click,
+                    update_cursor_for_disabled_buttons,
                 )
                     .run_if(in_state(AppState::Menu)),
             )
-            .add_systems(OnExit(AppState::Menu), despawn_menu);
+            .add_systems(OnExit(AppState::Menu), (despawn_menu, reset_cursor));
 
         // The web build has no process to quit; players just close the browser tab.
         #[cfg(not(target_arch = "wasm32"))]
@@ -126,17 +126,14 @@ struct OnMenuScreen;
 struct GameButton;
 
 /// Marks a `GameButton` that's actually wired up, so [`playable_game_button_click`] can route
-/// its clicks into the right screen and [`tooltip_visibility`] can skip the "Work in progress"
-/// tooltip for it.
+/// its clicks into the right screen; entries without this get a static "Coming soon" label
+/// instead of their real button behavior.
 #[derive(Component)]
 struct PlayableGame(GameId);
 
 #[cfg(not(target_arch = "wasm32"))]
 #[derive(Component)]
 struct QuitButton;
-
-#[derive(Component)]
-struct Tooltip;
 
 #[derive(Component)]
 struct GameButtonLabel;
@@ -243,7 +240,7 @@ fn spawn_menu(mut commands: Commands, windows: Query<&Window, With<PrimaryWindow
                                                 max_width: Val::Px(GAME_BUTTON_WIDTH_MAX_PX),
                                                 max_height: Val::Px(GAME_BUTTON_MAX_PX),
                                                 padding: UiRect::all(Val::Px(12.0)),
-                                                justify_content: JustifyContent::Center,
+                                                flex_direction: FlexDirection::Column,
                                                 align_items: AlignItems::Center,
                                                 ..default()
                                             },
@@ -253,6 +250,27 @@ fn spawn_menu(mut commands: Commands, windows: Query<&Window, With<PrimaryWindow
                                             button_entity.insert(PlayableGame(id));
                                         }
                                         button_entity.with_children(|button| {
+                                            // Every game is a placeholder for now except the
+                                            // ones wired up via `PlayableGame`; those get a
+                                            // static grayed-out notice pinned to the top of the
+                                            // button instead of the real game name's usual
+                                            // treatment.
+                                            if entry.id.is_none() {
+                                                button.spawn((
+                                                    Text::new("Coming soon"),
+                                                    TextFont {
+                                                        font_size: FontSize::Px(14.0),
+                                                        ..default()
+                                                    },
+                                                    TextColor(Color::srgb(0.55, 0.55, 0.55)),
+                                                    TextLayout::justify(Justify::Center),
+                                                ));
+                                            }
+
+                                            // `margin.top: Auto` consumes the remaining column
+                                            // space above this child, pushing it to the bottom
+                                            // of the button — works whether or not the "Work in
+                                            // progress" notice above it is present.
                                             button.spawn((
                                                 GameButtonLabel,
                                                 Text::new(entry.name),
@@ -262,30 +280,10 @@ fn spawn_menu(mut commands: Commands, windows: Query<&Window, With<PrimaryWindow
                                                 },
                                                 TextColor(Color::WHITE),
                                                 TextLayout::justify(Justify::Center),
-                                            ));
-
-                                            // Hidden until the button is hovered; every game is
-                                            // a placeholder for now, so the tooltip text is
-                                            // fixed.
-                                            button.spawn((
-                                                Tooltip,
-                                                Visibility::Hidden,
-                                                Text::new("Work in progress"),
-                                                TextFont {
-                                                    font_size: FontSize::Px(16.0),
-                                                    ..default()
-                                                },
-                                                TextColor(Color::WHITE),
                                                 Node {
-                                                    position_type: PositionType::Absolute,
-                                                    top: Val::Px(-28.0),
-                                                    padding: UiRect::axes(
-                                                        Val::Px(8.0),
-                                                        Val::Px(4.0),
-                                                    ),
+                                                    margin: UiRect::top(Val::Auto),
                                                     ..default()
                                                 },
-                                                BackgroundColor(Color::BLACK.with_alpha(0.85)),
                                             ));
                                         });
                                     }
@@ -373,31 +371,6 @@ fn quit_button_interaction(
     }
 }
 
-#[allow(clippy::type_complexity)]
-fn tooltip_visibility(
-    buttons: Query<
-        (&Interaction, &Children),
-        (
-            Changed<Interaction>,
-            With<GameButton>,
-            Without<PlayableGame>,
-        ),
-    >,
-    mut tooltips: Query<&mut Visibility, With<Tooltip>>,
-) {
-    for (interaction, children) in &buttons {
-        let visibility = match interaction {
-            Interaction::Hovered | Interaction::Pressed => Visibility::Visible,
-            Interaction::None => Visibility::Hidden,
-        };
-        for &child in children {
-            if let Ok(mut tooltip_visibility) = tooltips.get_mut(child) {
-                *tooltip_visibility = visibility;
-            }
-        }
-    }
-}
-
 fn resize_game_button_labels(
     mut resize_events: MessageReader<WindowResized>,
     windows: Query<&Window, With<PrimaryWindow>>,
@@ -419,4 +392,45 @@ fn despawn_menu(mut commands: Commands, query: Query<Entity, With<OnMenuScreen>>
     for entity in &query {
         commands.entity(entity).despawn();
     }
+}
+
+/// Swaps the window's cursor to a "not-allowed" icon while the pointer is over any "Coming soon"
+/// button (a `GameButton` without `PlayableGame`), and back to the platform default otherwise.
+/// The `Local` remembers last frame's state so this only touches `CursorIcon` — and so only
+/// triggers Bevy's change detection — on an actual transition, not every frame the pointer
+/// happens to be resting over a disabled button.
+fn update_cursor_for_disabled_buttons(
+    mut was_hovering_disabled: Local<bool>,
+    buttons: Query<&Interaction, (With<GameButton>, Without<PlayableGame>)>,
+    windows: Query<Entity, With<PrimaryWindow>>,
+    mut commands: Commands,
+) {
+    let hovering_disabled = buttons
+        .iter()
+        .any(|interaction| *interaction != Interaction::None);
+    if hovering_disabled == *was_hovering_disabled {
+        return;
+    }
+    *was_hovering_disabled = hovering_disabled;
+
+    let Ok(window) = windows.single() else {
+        return;
+    };
+    let icon = if hovering_disabled {
+        SystemCursorIcon::NotAllowed
+    } else {
+        SystemCursorIcon::Default
+    };
+    commands.entity(window).insert(CursorIcon::from(icon));
+}
+
+/// Restores the default cursor on leaving the menu, in case a player navigates away while still
+/// hovering a "Coming soon" button (otherwise the next screen would inherit the not-allowed icon).
+fn reset_cursor(windows: Query<Entity, With<PrimaryWindow>>, mut commands: Commands) {
+    let Ok(window) = windows.single() else {
+        return;
+    };
+    commands
+        .entity(window)
+        .insert(CursorIcon::from(SystemCursorIcon::Default));
 }
