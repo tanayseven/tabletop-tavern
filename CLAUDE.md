@@ -175,6 +175,23 @@ stay in agreement: the `cfg` in `src-tauri/Cargo.toml`, `platforms` in
 because `index.html` carries an inline anti-flash background style; `script-src`
 is `'self'` and should stay that way.
 
+**The desktop window is portrait (600×900), and that's deliberate.** The board
+is `min(90vw, 55vh, 420px)`, so it stops growing at 420px — reached at any width
+from ~470px once the window is ~764px tall. Extra width past that is empty
+margin either side of the board, while the menu's ten cards need the height: at
+a 1024×768 landscape window the menu scrolls 408px, at 600×900 it scrolls 91px,
+and at 600×1000 it doesn't scroll at all. 1000 isn't the default because a
+1366×768 or 1280×800 laptop would open it partly off-screen.
+
+The minimums (400×600) are where things actually break rather than merely look
+cramped: below 400px wide the score line wraps and the endgame buttons can't sit
+side by side (`min-width: 160px` each), so the game screen overflows at any
+height; below ~600px tall the board screen overflows too.
+
+Worth revisiting if Solitaire or a large Minesweeper lands — nine of the ten
+games in the registry are square boards, which is what makes portrait the right
+shape today, but a Klondike tableau is genuinely wide.
+
 ## CI/CD
 
 - `.github/workflows/ci.yml` — a `web` job (lint/check/test/build/e2e on Linux)
