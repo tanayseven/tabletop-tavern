@@ -104,6 +104,12 @@ button instead of drifting at the extremes.
   Toe board on every move. `aspect-ratio` on the container doesn't save you; it
   fixes the container, not the track distribution. There's a regression test in
   `e2e/app.spec.ts`.
+- **Don't insert content into a centred column mid-interaction.** Conditionally
+  rendering the Tic Tac Toe endgame buttons grew the column at game over and
+  shunted the board 35px upwards just as the player was looking at it. Render
+  the element always and hide it (`visibility: hidden` plus `inert`, so it stays
+  out of the focus order and the accessibility tree) to reserve its space.
+  There's a regression test in `e2e/app.spec.ts`.
 - **Hover is not universal.** Hover-only affordances are invisible on a phone,
   which is why the "Coming soon" label is always visible rather than a tooltip.
   If you do add one, gate it on `@media (hover: hover) and (pointer: fine)` and

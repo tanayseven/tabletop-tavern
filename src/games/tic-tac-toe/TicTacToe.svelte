@@ -220,12 +220,14 @@
 
     <p class="score">{scoreText}</p>
 
-    {#if over}
-      <div class="choices row">
-        <button onclick={playAgain}>Play Again</button>
-        <button onclick={() => router.navigate('/menu')}>Back to Menu</button>
-      </div>
-    {/if}
+    <!-- Always rendered, only hidden, so the row keeps its space in the column.
+         Inserting it at game over grew the centred column and shunted the board
+         upwards mid-game. `inert` keeps the hidden buttons out of the focus
+         order and the accessibility tree. -->
+    <div class="choices row endgame" class:hidden={!over} inert={!over}>
+      <button onclick={playAgain}>Play Again</button>
+      <button onclick={() => router.navigate('/menu')}>Back to Menu</button>
+    </div>
   {/if}
 
   {#if step !== 'play'}
@@ -278,6 +280,10 @@
   .choices.row button {
     width: auto;
     min-width: 160px;
+  }
+
+  .endgame.hidden {
+    visibility: hidden;
   }
 
   .choices button:hover {

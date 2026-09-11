@@ -152,6 +152,34 @@ test('the board cells keep their size as marks are placed', async ({
   }
 })
 
+test('the board does not move when the endgame buttons appear', async ({
+  page,
+}) => {
+  await page.goto('/#/game/tic-tac-toe')
+
+  await page.getByRole('button', { name: 'Player vs Player' }).click()
+  await page.getByRole('button', { name: 'Heads' }).click()
+  await page.getByRole('button', { name: 'Continue' }).click()
+  await page.getByRole('button', { name: 'X', exact: true }).click()
+
+  const board = page.getByRole('grid', { name: 'Tic Tac Toe board' })
+  const cells = board.getByRole('button')
+  const boardTop = async () => (await board.boundingBox())!.y
+
+  // Regression test for "Play Again" / "Back to Menu" being inserted into the
+  // centred column at game over, which grew it and shunted the board upwards.
+  const during = await boardTop()
+
+  const playAgain = page.getByRole('button', { name: 'Play Again' })
+  await expect(playAgain).toBeHidden()
+
+  for (const index of [0, 3, 1, 4, 2]) await cells.nth(index).click()
+  await expect(page.getByText('X wins!')).toBeVisible()
+  await expect(playAgain).toBeVisible()
+
+  expect(Math.abs((await boardTop()) - during)).toBeLessThan(1)
+})
+
 test('an unknown game id falls back to the menu', async ({ page }) => {
   await page.goto('/#/game/not-a-real-game')
   await expect(page.getByText(/There's no game called/)).toBeVisible()
