@@ -10,8 +10,48 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
-    name: Test & build (${{ matrix.os }})
+  # The app itself is platform-independent, so this runs on Linux only. The old
+  # three-OS matrix existed because the Bevy binary had to compile everywhere;
+  # what actually varies per OS now is the Tauri shell, covered by `desktop`.
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: jdx/mise-action@v2
+        with:
+          cache: true
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint and format check
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm check
+
+      - name: Unit and component tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: End-to-end tests
+        run: pnpm e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  # Catches breakage in the Tauri shell, which the `web` job never exercises.
+  # Only builds the Rust side -- bundling is the release workflow's job.
+  desktop:
     strategy:
       fail-fast: false
       matrix:
@@ -20,13 +60,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Linux build dependencies
-        if: runner.os == 'Linux'
+      - name: Install Tauri's Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y \
-            libasound2-dev libudev-dev pkg-config \
-            libwayland-dev libxkbcommon-dev
+            libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       - uses: jdx/mise-action@v2
         with:
@@ -34,20 +73,15 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
+          workspaces: src-tauri
           key: ${{ matrix.os }}
 
-      - name: Install rustfmt and clippy components
-        # mise's rustup-provisioned toolchain doesn't install these by default on CI runners.
-        run: mise x -- rustup component add rustfmt clippy
+      - run: pnpm install --frozen-lockfile
 
-      - name: Check formatting
-        run: mise x -- cargo fmt --all -- --check
+      # tauri.conf.json points at ../dist, and `tauri build` would run it
+      # anyway; building first keeps the failure attributable to the frontend.
+      - name: Build the frontend
+        run: pnpm build
 
-      - name: Clippy
-        run: mise x -- cargo clippy --all-targets --all-features -- -D warnings
-
-      - name: Run tests
-        run: mise x -- cargo test --all-targets
-
-      - name: Build
-        run: mise x -- cargo build --release
+      - name: Check the Tauri shell
+        run: cargo check --manifest-path src-tauri/Cargo.toml --locked

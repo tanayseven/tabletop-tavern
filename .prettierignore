@@ -1,0 +1,10 @@
+dist/
+node_modules/
+# Left behind by the deleted Bevy app; safe to delete from disk entirely.
+target/
+pnpm-lock.yaml
+mise.lock
+src-tauri/target/
+src-tauri/gen/
+playwright-report/
+test-results/

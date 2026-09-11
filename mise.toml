@@ -5,22 +5,32 @@ lockfile = true
 experimental = true
 
 [tools]
-# The Rust toolchain: rustc + std + cargo (mise's `rust` backend bundles cargo, so no separate
-# `cargo` entry is needed). This is what Bevy and the rest of the crate graph build against.
+# Node + pnpm build and test the Svelte app; this is the toolchain you use day to day.
+node = "24.21.0"
+pnpm = "12.4.0"
+# Tauri's shell is written in Rust, so a toolchain is still needed to produce desktop and
+# mobile bundles. Nothing in `src/` is Rust — this is a build-time dependency of packaging
+# only, and you never edit Rust to add a game.
 rust = "1.97.1"
-# Compiles Rust->WASM glue code so the Bevy game can run in the browser (e.g. itch.io web builds).
-# Must stay in lockstep with the `wasm-bindgen` crate version resolved in Cargo.lock, or the CLI
-# refuses to run against the generated wasm (schema-version mismatch).
-"cargo:wasm-bindgen-cli" = "0.2.126"
 # itch.io's official CLI for pushing game builds to itch.io from the command line.
 "ubi:itchio/butler" = "15.30.0"
-# WASM optimizer/toolchain (wasm-opt etc.) used to shrink and speed up the compiled web build.
-# `exe = "wasm-opt"` is required because the release archive has no binary literally named
-# `binaryen` — ubi needs to be told which extracted entry to expose. Must be pinned to the exact
-# release tag (e.g. "version_131"): ubi's "latest" resolution mis-sorts this repo's tags and
-# picks an ancient "1.39.1" release whose wasm-opt is too old to parse modern wasm output.
-"ubi:WebAssembly/binaryen" = { version = "version_131", exe = "wasm-opt" }
 
-[tasks.run]
-description = "Run Tabletop Tavern"
-run = "cargo run"
+[tasks.dev]
+description = "Run the app in a browser with hot reload"
+run = "pnpm dev"
+
+[tasks.build]
+description = "Build the web app into dist/"
+run = "pnpm build"
+
+[tasks.test]
+description = "Run the unit and component test suite"
+run = "pnpm test"
+
+[tasks.check]
+description = "Lint, format-check and typecheck everything"
+run = ["pnpm lint", "pnpm check"]
+
+[tasks.tauri]
+description = "Run the desktop app (pass `build` to produce bundles)"
+run = "pnpm tauri"

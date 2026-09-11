@@ -1,2 +1,20 @@
-/target
+node_modules/
+dist/
+.vite/
+
+# Build output of the removed Bevy app. The directory may still exist locally
+# from before the migration; it is safe to delete. Kept ignored so a stale
+# `target/` can never be committed.
+/target/
+
+# Tauri's Rust build output. `src-tauri/gen/` is deliberately not ignored here:
+# src-tauri/.gitignore drops only gen/schemas, because the generated Android and
+# Xcode projects under gen/ are meant to be committed once mobile is set up.
+src-tauri/target/
+
+# Playwright
+test-results/
+playwright-report/
+
 .idea/
+.DS_Store
