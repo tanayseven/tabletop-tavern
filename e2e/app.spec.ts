@@ -116,6 +116,42 @@ test('the title stays reachable when the games overflow the screen', async ({
   expect(box!.y).toBeGreaterThanOrEqual(0)
 })
 
+test('the board cells keep their size as marks are placed', async ({
+  page,
+}) => {
+  await page.goto('/#/game/tic-tac-toe')
+
+  await page.getByRole('button', { name: 'Player vs Player' }).click()
+  await page.getByRole('button', { name: 'Heads' }).click()
+  await page.getByRole('button', { name: 'Continue' }).click()
+  await page.getByRole('button', { name: 'X', exact: true }).click()
+
+  const cells = page
+    .getByRole('grid', { name: 'Tic Tac Toe board' })
+    .getByRole('button')
+
+  // Regression test for the grid's rows being left implicit, which made them
+  // content-sized: an empty cell is textless and short, so the first mark
+  // dropped into a row grew it and visibly resized the board mid-game.
+  const heights = async () => {
+    const boxes = await cells.evaluateAll((els) =>
+      els.map((el) => el.getBoundingClientRect().height),
+    )
+    return { min: Math.min(...boxes), max: Math.max(...boxes) }
+  }
+
+  const empty = await heights()
+  expect(empty.max - empty.min).toBeLessThan(1)
+
+  for (const index of [0, 3, 1]) {
+    await cells.nth(index).click()
+    const now = await heights()
+    // Uniform across the board, and unchanged from the empty board.
+    expect(now.max - now.min).toBeLessThan(1)
+    expect(Math.abs(now.max - empty.max)).toBeLessThan(1)
+  }
+})
+
 test('an unknown game id falls back to the menu', async ({ page }) => {
   await page.goto('/#/game/not-a-real-game')
   await expect(page.getByText(/There's no game called/)).toBeVisible()

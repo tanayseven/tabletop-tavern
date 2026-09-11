@@ -98,6 +98,12 @@ button instead of drifting at the extremes.
 - **Don't size a grid item as a percentage of an `auto` column.** It's circular,
   and the item silently collapses to its text width. Put the explicit width on
   `grid-template-columns` and let the item fill it — see `Menu.svelte`.
+- **Set both grid axes when every track must stay equal.** `grid-template-columns`
+  alone leaves the rows implicit and therefore content-sized, so a textless cell
+  is short and grows the moment content lands in it — which resized the Tic Tac
+  Toe board on every move. `aspect-ratio` on the container doesn't save you; it
+  fixes the container, not the track distribution. There's a regression test in
+  `e2e/app.spec.ts`.
 - **Hover is not universal.** Hover-only affordances are invisible on a phone,
   which is why the "Coming soon" label is always visible rather than a tooltip.
   If you do add one, gate it on `@media (hover: hover) and (pointer: fine)` and

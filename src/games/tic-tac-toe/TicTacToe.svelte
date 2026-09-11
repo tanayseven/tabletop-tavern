@@ -331,7 +331,10 @@
 
   .board {
     display: grid;
+    /* Both axes are explicit. Leaving the rows implicit makes them content-sized,
+       so an empty cell's row is short and grows the moment a mark lands in it. */
     grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
     gap: 8px;
     /* Square, and never taller than the space available -- which is what keeps
        the whole board visible in a phone's landscape orientation. */
