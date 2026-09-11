@@ -187,6 +187,50 @@ test('the board does not move when the endgame buttons appear', async ({
   expect(Math.abs((await boardTop()) - during)).toBeLessThan(1)
 })
 
+test('switches between the light and dark themes', async ({ page }) => {
+  await page.goto('/#/menu')
+
+  const html = page.locator('html')
+  const background = () =>
+    page.evaluate(() => getComputedStyle(document.body).backgroundColor)
+
+  // Nothing stored yet, so the attribute is absent and the palette is whatever
+  // the system asks for -- Playwright's default being light.
+  await expect(html).not.toHaveAttribute('data-theme')
+  const light = await background()
+
+  await page.getByRole('button', { name: 'Switch to dark theme' }).click()
+  await expect(html).toHaveAttribute('data-theme', 'dark')
+
+  // The attribute alone would pass even if no token were wired to it.
+  const dark = await background()
+  expect(dark).not.toBe(light)
+
+  // Applied before the first paint on the way back in. The usual way to do that
+  // is an inline script in index.html, which Tauri's `script-src 'self'` CSP
+  // blocks, so it runs from main.ts instead -- this is what proves it's early
+  // enough.
+  await page.reload()
+  await expect(html).toHaveAttribute('data-theme', 'dark')
+  expect(await background()).toBe(dark)
+
+  await page.getByRole('button', { name: 'Switch to light theme' }).click()
+  await expect(html).toHaveAttribute('data-theme', 'light')
+  expect(await background()).toBe(light)
+})
+
+test('the theme can be switched without leaving a game', async ({ page }) => {
+  await page.goto('/#/game/tic-tac-toe')
+
+  await page.getByRole('button', { name: 'Switch to dark theme' }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+
+  // Still on the same screen: changing the palette must not cost the round.
+  await expect(
+    page.getByRole('button', { name: 'Player vs Player' }),
+  ).toBeVisible()
+})
+
 test('an unknown game id falls back to the menu', async ({ page }) => {
   await page.goto('/#/game/not-a-real-game')
   await expect(page.getByText(/There's no game called/)).toBeVisible()

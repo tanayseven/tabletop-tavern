@@ -1,11 +1,19 @@
 <script lang="ts">
   import GameCard from '../components/GameCard.svelte'
+  import ThemeToggle from '../components/ThemeToggle.svelte'
   import { GAMES } from '../lib/games'
   import { isDesktopApp, quitApp } from '../lib/platform'
 </script>
 
 <main class="page">
   <div class="content">
+    <!-- In the column rather than fixed to the corner: fixed positioning would
+         overlap the title once the viewport is narrow enough for the two to
+         meet. It's always rendered, so it costs no layout shift. -->
+    <div class="topbar">
+      <ThemeToggle />
+    </div>
+
     <h1>Tabletop Tavern</h1>
 
     <!-- The Bevy version chunked these into explicit rows of three to dodge a
@@ -60,6 +68,14 @@
     max-width: var(--grid-max);
     margin-block: auto;
     padding-block: var(--pad-page);
+  }
+
+  /* Full width of the content column, so the button lines up with the right
+     edge of the card grid below it. */
+  .topbar {
+    display: flex;
+    justify-content: flex-end;
+    width: 100%;
   }
 
   h1 {

@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Component } from 'svelte'
+  import ThemeToggle from '../components/ThemeToggle.svelte'
   import { findGame, WIP_NOTE } from '../lib/games'
   import { router } from '../lib/router.svelte'
 
@@ -24,6 +25,10 @@
   <header>
     <button class="back" onclick={back}>← Menu</button>
     <h1>{game?.title ?? 'Unknown game'}</h1>
+    <!-- Also here, not just on the menu: the glare of the wrong palette is most
+         likely to be noticed mid-game, and backing out to change it would end
+         the round. -->
+    <ThemeToggle />
   </header>
 
   <div class="stage">
@@ -65,9 +70,15 @@
   }
 
   h1 {
-    margin: 0;
+    /* The auto right margin is what pushes the theme toggle to the far end of
+       the header. */
+    margin: 0 auto 0 0;
     font-size: 1.5rem;
     font-weight: 600;
+    /* The title gives way before the toggle does, rather than pushing it off
+       the edge on a narrow screen. */
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   .back {

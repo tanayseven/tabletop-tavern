@@ -87,26 +87,39 @@ function playOut(
   return status(b)
 }
 
+/**
+ * 200 games of unmemoised minimax land just under Vitest's 5s default on an
+ * idle machine, so the property below tips over the moment the rest of the
+ * suite is competing for cores -- it failed roughly half the full-suite runs.
+ * The property is worth the wall time; it's the default timeout that doesn't
+ * fit it.
+ */
+const PLAYOUT_TIMEOUT_MS = 20_000
+
 describe('Hard difficulty', () => {
   // The design doc's guarantee: Hard never loses. The best any opponent can
   // manage is a draw, so this is the property worth testing rather than any
   // particular move.
-  it('never loses, whichever side it plays or starts', () => {
-    for (const opponent of ALL) {
-      for (const startingPlayer of ['X', 'O'] as const) {
-        for (let game = 0; game < 25; game++) {
-          // Hard plays O; the opponent plays X.
-          const result = playOut(opponent, 'hard', startingPlayer)
-          if (result.kind === 'won') {
-            expect(
-              result.winner,
-              `Hard lost to ${opponent} (starting ${startingPlayer})`,
-            ).toBe('O')
+  it(
+    'never loses, whichever side it plays or starts',
+    () => {
+      for (const opponent of ALL) {
+        for (const startingPlayer of ['X', 'O'] as const) {
+          for (let game = 0; game < 25; game++) {
+            // Hard plays O; the opponent plays X.
+            const result = playOut(opponent, 'hard', startingPlayer)
+            if (result.kind === 'won') {
+              expect(
+                result.winner,
+                `Hard lost to ${opponent} (starting ${startingPlayer})`,
+              ).toBe('O')
+            }
           }
         }
       }
-    }
-  })
+    },
+    PLAYOUT_TIMEOUT_MS,
+  )
 
   it('draws against itself', () => {
     for (const startingPlayer of ['X', 'O'] as const) {

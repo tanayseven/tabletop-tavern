@@ -83,7 +83,7 @@ All colours, spacing and font sizes live as custom properties in `src/app.css`.
 Spacing and type are carried over from the Bevy build (its `Color::srgb()`
 values ×255); the colours are not — they're a warm tavern palette in light and
 dark. Don't hardcode a colour in a component — use the variables. There's a
-test in `src/theme.test.ts` that fails if one creeps in.
+test in `src/tokens.test.ts` that fails if one creeps in.
 
 The palette comes in two namespaced sets, so a game can be re-themed without
 dragging the shell with it:
@@ -97,14 +97,32 @@ them (`--bg-page`, `--btn`, `--text`, `--border`, …), which resolve through
 whichever palette is live, so a palette swap only touches the top of `app.css`.
 
 Light is the default and dark follows `prefers-color-scheme`. `data-theme` on
-`<html>` overrides the preference; nothing sets it yet, and it's there for a
-settings screen to use. The dark palette is written out twice — CSS can't share
-one declaration block between a media query and an attribute selector — and
-`theme.test.ts` pins the two copies together.
+`<html>` overrides the preference. The dark palette is written out twice — CSS
+can't share one declaration block between a media query and an attribute
+selector — and `tokens.test.ts` pins the two copies together.
 
 `index.html` is the one place a literal colour is allowed: it paints the
 background before the stylesheet loads, so it can't reference a token. The same
 test pins it to `--tavern-bg`.
+
+### Switching theme
+
+`src/lib/theme.svelte.ts` owns `data-theme`: it stores the player's choice, and
+removes the attribute entirely when there is none, so the media query stays in
+charge until they actually pick. `ThemeToggle.svelte` is the button, and sits in
+the menu's top bar and the game-host header — the palette is most likely to
+grate mid-game, and backing out to the menu to change it would end the round.
+
+**The stored choice can't be applied from an inline script.** That's the usual
+way to beat the flash, but `tauri.conf.json` sets `script-src 'self'`, which
+blocks inline scripts, and that CSP should stay as it is. `initTheme()` runs
+from `main.ts` before `mount()` instead: the stylesheet is already linked by
+then, so the attribute lands before Svelte renders. There's a regression test in
+`e2e/app.spec.ts` that reloads the page and checks the palette survives.
+
+Not every webview implements `matchMedia` (and jsdom doesn't, which is how the
+component tests reach that path), so reading the system preference is guarded
+and falls back to light.
 
 Menu buttons scale with the viewport: `--card-width` / `--card-height` are
 `clamp()`ed vmin values matching the Bevy build's `GAME_BUTTON_VMIN` constants,

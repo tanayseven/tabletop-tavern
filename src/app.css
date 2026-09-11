@@ -169,6 +169,10 @@ body {
   margin: 0;
   padding: 0;
   height: 100%;
+  /* html carries it too, so that overriding the system preference repaints the
+     canvas as well -- index.html's anti-flash background is keyed to the
+     preference and would otherwise stay behind the app in the other palette. */
+  background: var(--bg-page);
 }
 
 body {
