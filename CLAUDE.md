@@ -79,9 +79,32 @@ own chunk, so the menu doesn't pay for games nobody opened. Games without a
 
 ### Design tokens
 
-All colours, spacing and font sizes live as custom properties in `src/app.css`
-and are carried over from the Bevy build (its `Color::srgb()` values ×255).
-Don't hardcode colours in a component — use the variables.
+All colours, spacing and font sizes live as custom properties in `src/app.css`.
+Spacing and type are carried over from the Bevy build (its `Color::srgb()`
+values ×255); the colours are not — they're a warm tavern palette in light and
+dark. Don't hardcode a colour in a component — use the variables. There's a
+test in `src/theme.test.ts` that fails if one creeps in.
+
+The palette comes in two namespaced sets, so a game can be re-themed without
+dragging the shell with it:
+
+- `--tavern-*` — the shell: splash, menu, game-host chrome
+- `--game-*` — the playing surface, at higher contrast so pieces and grid lines
+  stay legible
+
+Components don't reference either set directly. They use the **roles** below
+them (`--bg-page`, `--btn`, `--text`, `--border`, …), which resolve through
+whichever palette is live, so a palette swap only touches the top of `app.css`.
+
+Light is the default and dark follows `prefers-color-scheme`. `data-theme` on
+`<html>` overrides the preference; nothing sets it yet, and it's there for a
+settings screen to use. The dark palette is written out twice — CSS can't share
+one declaration block between a media query and an attribute selector — and
+`theme.test.ts` pins the two copies together.
+
+`index.html` is the one place a literal colour is allowed: it paints the
+background before the stylesheet loads, so it can't reference a token. The same
+test pins it to `--tavern-bg`.
 
 Menu buttons scale with the viewport: `--card-width` / `--card-height` are
 `clamp()`ed vmin values matching the Bevy build's `GAME_BUTTON_VMIN` constants,

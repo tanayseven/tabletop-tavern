@@ -101,7 +101,7 @@
     border: none;
     font-size: var(--fs-button);
     background: var(--quit);
-    color: var(--text);
+    color: var(--quit-text);
     cursor: pointer;
     transition: background-color 120ms ease;
   }

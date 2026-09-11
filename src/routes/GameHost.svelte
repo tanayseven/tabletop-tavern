@@ -61,6 +61,7 @@
     align-items: center;
     gap: var(--gap-grid);
     padding: var(--pad-page);
+    border-bottom: 1px solid var(--border);
   }
 
   h1 {
@@ -71,7 +72,7 @@
 
   .back {
     padding: 8px 12px;
-    border: none;
+    border: 1px solid var(--border);
     background: var(--btn);
     cursor: pointer;
   }

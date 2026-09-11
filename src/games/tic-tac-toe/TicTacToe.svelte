@@ -208,6 +208,8 @@
       {#each board.cells as cell, index (index)}
         <button
           class="cell"
+          class:x={cell === 'X'}
+          class:o={cell === 'O'}
           class:winning={line?.includes(index)}
           disabled={cell !== null || over || awaitingComputer}
           aria-label={`Row ${Math.floor(index / 3) + 1}, column ${(index % 3) + 1}${cell ? `: ${cell}` : ': empty'}`}
@@ -236,12 +238,17 @@
 </div>
 
 <style>
+  /* The playing surface draws from the --game-* set rather than the shell's, so
+     it can carry more contrast than the menu without dragging the menu with it.
+     The pre-game screens are chrome, so their buttons stay on the shell tokens;
+     only the labels and the board itself are the game's own. */
   .game {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: var(--gap-grid);
     width: 100%;
+    color: var(--game-text);
   }
 
   h2 {
@@ -269,7 +276,7 @@
   .choices button {
     width: 100%;
     padding: var(--pad-btn);
-    border: none;
+    border: 1px solid var(--border);
     background: var(--btn);
     color: var(--text);
     font-size: var(--fs-button);
@@ -292,6 +299,7 @@
 
   .choices button:active {
     background: var(--btn-active);
+    color: var(--btn-active-text);
   }
 
   .wide {
@@ -328,10 +336,12 @@
     min-height: 1.3em;
   }
 
+  /* Muted caption text, so it takes the shell's secondary rather than a game
+     token -- the --game-* set is deliberately only the board and its labels. */
   .score {
     margin: 0;
     font-size: 18px;
-    color: #bfbfbf; /* srgb(0.75, 0.75, 0.75) */
+    color: var(--text-muted);
     text-align: center;
   }
 
@@ -342,6 +352,12 @@
     grid-template-columns: repeat(3, 1fr);
     grid-template-rows: repeat(3, 1fr);
     gap: 8px;
+    /* The grid lines are the board showing through the gaps, so the container
+       carries --game-grid and the cells sit on top of it. The padding extends
+       the same colour around the outside as a frame. Both are inside the
+       border-box, so neither changes the square. */
+    padding: 8px;
+    background: var(--game-grid);
     /* Square, and never taller than the space available -- which is what keeps
        the whole board visible in a phone's landscape orientation. */
     width: min(90vw, 55vh, 420px);
@@ -353,8 +369,8 @@
     align-items: center;
     justify-content: center;
     border: none;
-    background: var(--btn);
-    color: var(--text);
+    background: var(--game-bg);
+    color: var(--game-text);
     font-size: clamp(2rem, 12vw, 4rem);
     font-weight: 600;
     line-height: 1;
@@ -362,16 +378,36 @@
     transition: background-color 120ms ease;
   }
 
+  /* The marks differ in hue *and* lightness, so they stay apart for a
+     red-green colour-blind player and in greyscale. */
+  .cell.x {
+    color: var(--game-x);
+  }
+
+  .cell.o {
+    color: var(--game-o);
+  }
+
+  /* Towards the grid colour, which lightens the cell in dark mode and darkens
+     it in light mode -- either way it reads as a hover. */
   .cell:hover:not(:disabled) {
-    background: var(--btn-hover);
+    background: color-mix(in srgb, var(--game-grid) 12%, var(--game-bg));
   }
 
   .cell:disabled {
     cursor: default;
   }
 
+  /* A ring at full strength with only a wash behind it. A solid highlight fill
+     would drop the mark on top of it below a readable contrast, and the mark is
+     the thing the player is looking at. */
   .cell.winning {
-    background: var(--btn-active);
+    background: color-mix(
+      in srgb,
+      var(--game-win-highlight) 18%,
+      var(--game-bg)
+    );
+    box-shadow: inset 0 0 0 4px var(--game-win-highlight);
   }
 
   .back {
