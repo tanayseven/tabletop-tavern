@@ -85,21 +85,28 @@ test('the computer plays its turn against a Hard opponent', async ({
   const board = page.getByRole('grid', { name: 'Tic Tac Toe board' })
   await expect(board).toBeVisible()
 
-  // Whoever moves first, two marks are on the board shortly after one click.
   const cells = board.getByRole('button')
-  await cells
-    .nth(4)
-    .click()
-    .catch(() => {})
+  const marks = async () =>
+    (await cells.allTextContents()).filter((t) => t.trim() !== '').length
+
+  // Every cell is disabled while the computer is thinking, so an enabled cell
+  // means it is the human's turn. Waiting for that matters: when the computer
+  // wins the toss it moves first, and a click before it has played is a no-op,
+  // because `take` refuses a move that isn't the human's. Clicking blind left
+  // one mark on the board and the test waiting for a second that never came --
+  // on a coin flip, so it failed about half the time.
+  const playable = board.locator('button:not([disabled])')
   await expect
-    .poll(
-      async () => {
-        const texts = await cells.allTextContents()
-        return texts.filter((t) => t.trim() !== '').length
-      },
-      { timeout: 5_000 },
-    )
-    .toBeGreaterThanOrEqual(2)
+    .poll(() => playable.count(), { timeout: 5_000 })
+    .toBeGreaterThan(0)
+
+  const before = await marks()
+  await playable.first().click()
+
+  // The human's mark, and then the computer's reply.
+  await expect
+    .poll(marks, { timeout: 5_000 })
+    .toBeGreaterThanOrEqual(before + 2)
 })
 
 test('the title stays reachable when the games overflow the screen', async ({
