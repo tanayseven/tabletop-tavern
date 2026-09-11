@@ -1,23 +1,140 @@
 /*
- * Design tokens carried over from the Bevy build. Bevy's `Color::srgb()` takes
- * nonlinear sRGB components in 0..1, so each value below is the old constant
- * multiplied by 255 -- these are the same colours, not an approximation.
+ * Theme tokens.
+ *
+ * Two sets, namespaced separately so the playing surface can be re-themed
+ * without touching the shell (and so a second game can bring its own set):
+ *
+ *   --tavern-*  the app shell: splash, menu, game-host chrome
+ *   --game-*    the playing surface, pushed to higher contrast than the shell
+ *               so pieces and grid lines stay legible
+ *
+ * The palette is a warm tavern at candlelight: parchment, aged wood, ale amber
+ * and wine red. It replaces the greys carried over from the Bevy build.
+ *
+ * Light is the default; dark comes from the system preference. Setting
+ * `data-theme="light"` or `"dark"` on <html> overrides the preference, for
+ * whenever a settings screen exists to set it -- nothing reads it today.
+ *
+ * The dark palette is written out twice, once per selector, because CSS has no
+ * way to share one declaration block between a media query and an attribute
+ * selector. `theme.test.ts` fails if the two copies drift apart.
  */
 :root {
-  --bg-page: #1a1a1f; /* srgb(0.10, 0.10, 0.12) */
-  --bg-splash: #000000; /* Color::BLACK */
+  /* --- Shell, light --- */
+  --tavern-bg: #f5e9d3; /* app background */
+  --tavern-surface: #e8d2a8; /* cards, panels, nav bars */
+  --tavern-primary: #b8722e; /* primary buttons, active states (ale amber) */
+  --tavern-accent: #7a2e2e; /* secondary accent, highlights (wine) */
+  --tavern-text-primary: #3b2415; /* headings, body text */
+  --tavern-text-secondary: #6b5138; /* captions, muted text */
+  --tavern-border: #a8825a; /* dividers, card borders */
 
-  --btn: #333340; /* srgb(0.20, 0.20, 0.25) */
-  --btn-hover: #4d4d66; /* srgb(0.30, 0.30, 0.40) */
-  --btn-active: #268040; /* srgb(0.15, 0.50, 0.25) */
+  /* --- Playing surface, light --- */
+  --game-bg: #ede0c8; /* board/table background */
+  --game-grid: #4a3320; /* grid lines */
+  --game-x: #7a2e2e; /* X mark */
+  --game-o: #2e6b5e; /* O mark -- teal rather than blue, so the X/O split
+                        survives red-green colour blindness, and far enough
+                        apart in lightness to survive greyscale too */
+  --game-win-highlight: #c67f2e; /* winning-line highlight */
+  --game-text: #3b2415; /* status text, labels */
 
-  --quit: #592626; /* srgb(0.35, 0.15, 0.15) */
-  --quit-hover: #803333; /* srgb(0.50, 0.20, 0.20) */
-  --quit-active: #991a1a; /* srgb(0.60, 0.10, 0.10) */
+  /* Ink for text on a primary or accent fill, and the focus ring. Not palette
+     entries of their own: each is whichever palette colour contrasts best
+     against that fill, which is not the same colour in both modes. */
+  --tavern-on-primary: var(--tavern-text-primary);
+  --tavern-on-accent: var(--tavern-bg);
+  --tavern-focus: var(--tavern-accent);
 
-  --text: #ffffff;
-  --text-muted: #8c8c8c; /* srgb(0.55, 0.55, 0.55) — the "Coming soon" grey */
-  --focus-ring: #8ab4ff;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --tavern-bg: #1e1712;
+    --tavern-surface: #2c2115;
+    --tavern-primary: #e0a040;
+    --tavern-accent: #a8452f;
+    --tavern-text-primary: #f0e4d0;
+    --tavern-text-secondary: #b8a183;
+    --tavern-border: #4a3826;
+
+    --game-bg: #201a14;
+    --game-grid: #b8a183;
+    --game-x: #d9614a;
+    --game-o: #4fa88f;
+    --game-win-highlight: #e0a040;
+    --game-text: #f0e4d0;
+
+    --tavern-on-primary: var(--tavern-bg);
+    --tavern-on-accent: var(--tavern-text-primary);
+    --tavern-focus: var(--tavern-primary);
+
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --tavern-bg: #1e1712;
+  --tavern-surface: #2c2115;
+  --tavern-primary: #e0a040;
+  --tavern-accent: #a8452f;
+  --tavern-text-primary: #f0e4d0;
+  --tavern-text-secondary: #b8a183;
+  --tavern-border: #4a3826;
+
+  --game-bg: #201a14;
+  --game-grid: #b8a183;
+  --game-x: #d9614a;
+  --game-o: #4fa88f;
+  --game-win-highlight: #e0a040;
+  --game-text: #f0e4d0;
+
+  --tavern-on-primary: var(--tavern-bg);
+  --tavern-on-accent: var(--tavern-text-primary);
+  --tavern-focus: var(--tavern-primary);
+
+  color-scheme: dark;
+}
+
+/*
+ * Roles. Components reference these, never the palette entries and never a
+ * literal colour, so a palette swap only touches the block above. They resolve
+ * through whichever palette is live, so they need no light/dark variants of
+ * their own -- each hover and active mix is written to move in the right
+ * direction in both modes (towards the ale amber in light, towards the candle
+ * glow in dark).
+ */
+:root {
+  --bg-page: var(--tavern-bg);
+  --bg-splash: var(--tavern-bg);
+
+  --btn: var(--tavern-surface);
+  --btn-hover: color-mix(
+    in srgb,
+    var(--tavern-primary) 35%,
+    var(--tavern-surface)
+  );
+  --btn-active: var(--tavern-primary);
+  --btn-active-text: var(--tavern-on-primary);
+
+  --quit: var(--tavern-accent);
+  --quit-hover: color-mix(
+    in srgb,
+    var(--tavern-accent) 80%,
+    var(--tavern-primary)
+  );
+  --quit-active: color-mix(
+    in srgb,
+    var(--tavern-accent) 60%,
+    var(--tavern-primary)
+  );
+  --quit-text: var(--tavern-on-accent);
+
+  --text: var(--tavern-text-primary);
+  --text-muted: var(--tavern-text-secondary);
+  --border: var(--tavern-border);
+  --focus-ring: var(--tavern-focus);
 
   /* Spacing, matching the old Node/UiRect values. */
   --gap-page: 24px;
@@ -39,8 +156,6 @@
   --fs-title: clamp(1.75rem, 7vw, 2.5rem); /* 40px */
   --fs-button: clamp(1rem, 4.2vw, 1.5rem); /* 24px */
   --fs-note: 1rem; /* 16px */
-
-  color-scheme: dark;
 }
 
 *,
@@ -54,6 +169,10 @@ body {
   margin: 0;
   padding: 0;
   height: 100%;
+  /* html carries it too, so that overriding the system preference repaints the
+     canvas as well -- index.html's anti-flash background is keyed to the
+     preference and would otherwise stay behind the app in the other palette. */
+  background: var(--bg-page);
 }
 
 body {

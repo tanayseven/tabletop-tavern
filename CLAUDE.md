@@ -79,9 +79,50 @@ own chunk, so the menu doesn't pay for games nobody opened. Games without a
 
 ### Design tokens
 
-All colours, spacing and font sizes live as custom properties in `src/app.css`
-and are carried over from the Bevy build (its `Color::srgb()` values ×255).
-Don't hardcode colours in a component — use the variables.
+All colours, spacing and font sizes live as custom properties in `src/app.css`.
+Spacing and type are carried over from the Bevy build (its `Color::srgb()`
+values ×255); the colours are not — they're a warm tavern palette in light and
+dark. Don't hardcode a colour in a component — use the variables. There's a
+test in `src/tokens.test.ts` that fails if one creeps in.
+
+The palette comes in two namespaced sets, so a game can be re-themed without
+dragging the shell with it:
+
+- `--tavern-*` — the shell: splash, menu, game-host chrome
+- `--game-*` — the playing surface, at higher contrast so pieces and grid lines
+  stay legible
+
+Components don't reference either set directly. They use the **roles** below
+them (`--bg-page`, `--btn`, `--text`, `--border`, …), which resolve through
+whichever palette is live, so a palette swap only touches the top of `app.css`.
+
+Light is the default and dark follows `prefers-color-scheme`. `data-theme` on
+`<html>` overrides the preference. The dark palette is written out twice — CSS
+can't share one declaration block between a media query and an attribute
+selector — and `tokens.test.ts` pins the two copies together.
+
+`index.html` is the one place a literal colour is allowed: it paints the
+background before the stylesheet loads, so it can't reference a token. The same
+test pins it to `--tavern-bg`.
+
+### Switching theme
+
+`src/lib/theme.svelte.ts` owns `data-theme`: it stores the player's choice, and
+removes the attribute entirely when there is none, so the media query stays in
+charge until they actually pick. `ThemeToggle.svelte` is the button, and sits in
+the menu's top bar and the game-host header — the palette is most likely to
+grate mid-game, and backing out to the menu to change it would end the round.
+
+**The stored choice can't be applied from an inline script.** That's the usual
+way to beat the flash, but `tauri.conf.json` sets `script-src 'self'`, which
+blocks inline scripts, and that CSP should stay as it is. `initTheme()` runs
+from `main.ts` before `mount()` instead: the stylesheet is already linked by
+then, so the attribute lands before Svelte renders. There's a regression test in
+`e2e/app.spec.ts` that reloads the page and checks the palette survives.
+
+Not every webview implements `matchMedia` (and jsdom doesn't, which is how the
+component tests reach that path), so reading the system preference is guarded
+and falls back to light.
 
 Menu buttons scale with the viewport: `--card-width` / `--card-height` are
 `clamp()`ed vmin values matching the Bevy build's `GAME_BUTTON_VMIN` constants,
@@ -98,6 +139,18 @@ button instead of drifting at the extremes.
 - **Don't size a grid item as a percentage of an `auto` column.** It's circular,
   and the item silently collapses to its text width. Put the explicit width on
   `grid-template-columns` and let the item fill it — see `Menu.svelte`.
+- **Set both grid axes when every track must stay equal.** `grid-template-columns`
+  alone leaves the rows implicit and therefore content-sized, so a textless cell
+  is short and grows the moment content lands in it — which resized the Tic Tac
+  Toe board on every move. `aspect-ratio` on the container doesn't save you; it
+  fixes the container, not the track distribution. There's a regression test in
+  `e2e/app.spec.ts`.
+- **Don't insert content into a centred column mid-interaction.** Conditionally
+  rendering the Tic Tac Toe endgame buttons grew the column at game over and
+  shunted the board 35px upwards just as the player was looking at it. Render
+  the element always and hide it (`visibility: hidden` plus `inert`, so it stays
+  out of the focus order and the accessibility tree) to reserve its space.
+  There's a regression test in `e2e/app.spec.ts`.
 - **Hover is not universal.** Hover-only affordances are invisible on a phone,
   which is why the "Coming soon" label is always visible rather than a tooltip.
   If you do add one, gate it on `@media (hover: hover) and (pointer: fine)` and
@@ -121,6 +174,23 @@ stay in agreement: the `cfg` in `src-tauri/Cargo.toml`, `platforms` in
 `tauri.conf.json` sets a strict CSP. `style-src` allows `'unsafe-inline'`
 because `index.html` carries an inline anti-flash background style; `script-src`
 is `'self'` and should stay that way.
+
+**The desktop window is portrait (600×900), and that's deliberate.** The board
+is `min(90vw, 55vh, 420px)`, so it stops growing at 420px — reached at any width
+from ~470px once the window is ~764px tall. Extra width past that is empty
+margin either side of the board, while the menu's ten cards need the height: at
+a 1024×768 landscape window the menu scrolls 408px, at 600×900 it scrolls 91px,
+and at 600×1000 it doesn't scroll at all. 1000 isn't the default because a
+1366×768 or 1280×800 laptop would open it partly off-screen.
+
+The minimums (400×600) are where things actually break rather than merely look
+cramped: below 400px wide the score line wraps and the endgame buttons can't sit
+side by side (`min-width: 160px` each), so the game screen overflows at any
+height; below ~600px tall the board screen overflows too.
+
+Worth revisiting if Solitaire or a large Minesweeper lands — nine of the ten
+games in the registry are square boards, which is what makes portrait the right
+shape today, but a Klondike tableau is genuinely wide.
 
 ## CI/CD
 

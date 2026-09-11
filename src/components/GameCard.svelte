@@ -41,11 +41,13 @@
     flex-direction: column;
     align-items: center;
     padding: var(--pad-btn);
-    border: none;
+    border: 2px solid var(--border);
     background: var(--btn);
     color: var(--text);
     cursor: pointer;
-    transition: background-color 120ms ease;
+    transition:
+      background-color 120ms ease,
+      border-color 120ms ease;
   }
 
   .title {
@@ -68,10 +70,16 @@
 
   .card:hover:not(.wip) {
     background: var(--btn-hover);
+    border-color: var(--btn-active);
   }
 
+  /* The amber fill is dark enough in light mode and light enough in dark mode
+     that the card's usual body colour stops contrasting; --btn-active-text is
+     the ink that goes with it. */
   .card:active:not(.wip) {
     background: var(--btn-active);
+    border-color: var(--btn-active);
+    color: var(--btn-active-text);
   }
 
   .card.wip {
