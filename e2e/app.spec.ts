@@ -187,6 +187,27 @@ test('the board does not move when the endgame buttons appear', async ({
   expect(Math.abs((await boardTop()) - during)).toBeLessThan(1)
 })
 
+test('the title stays put while the games scroll under it', async ({
+  page,
+}) => {
+  await page.goto('/#/menu')
+  await page.setViewportSize({ width: 600, height: 700 })
+
+  const title = page.getByRole('heading', { name: 'Tabletop Tavern' })
+  const firstCard = page.locator('.grid button').first()
+
+  const titleBefore = (await title.boundingBox())!.y
+  const cardBefore = (await firstCard.boundingBox())!.y
+
+  await page.locator('.scroller').evaluate((el) => el.scrollBy(0, 300))
+  await expect
+    .poll(async () => (await firstCard.boundingBox())!.y)
+    .toBeLessThan(cardBefore)
+
+  // The games moved; the title did not.
+  expect((await title.boundingBox())!.y).toBe(titleBefore)
+})
+
 test('switches between the light and dark themes', async ({ page }) => {
   await page.goto('/#/menu')
 

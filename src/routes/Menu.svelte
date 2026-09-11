@@ -6,30 +6,33 @@
 </script>
 
 <main class="page">
-  <div class="content">
-    <!-- In the column rather than fixed to the corner: fixed positioning would
-         overlap the title once the viewport is narrow enough for the two to
-         meet. It's always rendered, so it costs no layout shift. -->
+  <!-- Outside the scroll container, so the title and the theme toggle stay put
+       while the games scroll under them. -->
+  <div class="header">
     <div class="topbar">
       <ThemeToggle />
     </div>
 
     <h1>Tabletop Tavern</h1>
+  </div>
 
-    <!-- The Bevy version chunked these into explicit rows of three to dodge a
-         taffy layout bug (see the old src/menu.rs). CSS has no such bug, so this
-         is a plain wrapping flex row -- which also happens to be what makes the
-         menu work on a narrow phone. Flex (not grid) so the short final row
-         stays centred, matching how the ten buttons used to look. -->
-    <div class="grid">
-      {#each GAMES as game (game.id)}
-        <GameCard {game} />
-      {/each}
+  <div class="scroller">
+    <div class="content">
+      <!-- The Bevy version chunked these into explicit rows of three to dodge a
+           taffy layout bug (see the old src/menu.rs). CSS has no such bug, so
+           this is a plain wrapping flex row -- which also happens to be what
+           makes the menu work on a narrow phone. Flex (not grid) so the short
+           final row stays centred, matching how the ten buttons used to look. -->
+      <div class="grid">
+        {#each GAMES as game (game.id)}
+          <GameCard {game} />
+        {/each}
+      </div>
+
+      {#if isDesktopApp}
+        <button class="quit" onclick={quitApp}>Quit</button>
+      {/if}
     </div>
-
-    {#if isDesktopApp}
-      <button class="quit" onclick={quitApp}>Quit</button>
-    {/if}
   </div>
 </main>
 
@@ -45,17 +48,59 @@
     padding-top: max(var(--pad-page), env(safe-area-inset-top));
     padding-bottom: max(var(--pad-page), env(safe-area-inset-bottom));
     background: var(--bg-page);
+    /* The page itself no longer scrolls -- .scroller does, so that the header
+       above it stays put. */
+    overflow: hidden;
+  }
+
+  .header {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    row-gap: var(--gap-page);
+    width: 100%;
+    max-width: var(--grid-max);
+    padding-top: var(--pad-page);
+    /* Matches the row gap the title used to have above the first row of games,
+       now that they're in separate containers and no gap spans the two. */
+    padding-bottom: var(--gap-page);
+  }
+
+  /* Full width of the header, so the button lines up with the right edge of the
+     card grid below it. In the column rather than fixed to the corner: fixed
+     positioning would overlap the title once the viewport is narrow enough for
+     the two to meet. */
+  .topbar {
+    display: flex;
+    justify-content: flex-end;
+    width: 100%;
+  }
+
+  /*
+   * The only thing that scrolls. `min-height: 0` is what lets it: a flex item
+   * defaults to `min-height: auto`, which refuses to shrink below its content,
+   * so without this the games would push the header off the top of the page
+   * instead of scrolling under it.
+   */
+  .scroller {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
     overflow-y: auto;
   }
 
   /*
    * Centred with auto margins rather than `justify-content: center`.
    *
-   * With `center`, content taller than the viewport overflows off the *top* of
-   * the scroll container, where scrolling cannot reach it -- on a short phone
-   * screen that clipped the title away entirely. `justify-content: safe center`
-   * is the textbook fix, but Vite's CSS minifier drops the `safe` keyword and
-   * silently reintroduces the bug. Auto margins behave the same way and survive
+   * With `center`, content taller than the scroll container overflows off its
+   * *top*, where scrolling cannot reach it -- on a short screen that clipped
+   * the first row of games away entirely. `justify-content: safe center` is the
+   * textbook fix, but Vite's CSS minifier drops the `safe` keyword and silently
+   * reintroduces the bug. Auto margins behave the same way and survive
    * minification: they centre when there's room and collapse to 0 when there
    * isn't.
    */
@@ -67,15 +112,7 @@
     width: 100%;
     max-width: var(--grid-max);
     margin-block: auto;
-    padding-block: var(--pad-page);
-  }
-
-  /* Full width of the content column, so the button lines up with the right
-     edge of the card grid below it. */
-  .topbar {
-    display: flex;
-    justify-content: flex-end;
-    width: 100%;
+    padding-bottom: var(--pad-page);
   }
 
   h1 {
