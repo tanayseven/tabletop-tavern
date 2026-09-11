@@ -190,4 +190,4 @@ by an automated test or by hand.
    assumes the latter, for simplicity — the Play screen has no way out
    mid-round. The mode, difficulty, coin toss, and symbol choice screens are
    different: each has a "Back" button to the previous setup screen, since
-   abandoning *before* a round starts has no in-progress state to lose.
+   abandoning _before_ a round starts has no in-progress state to lose.

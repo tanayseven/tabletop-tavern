@@ -1,69 +1,102 @@
 # Tabletop Tavern
 
-A tabletop game collection built with [Bevy](https://bevy.org).
+A collection of classic tabletop games, playable in a browser, on the desktop,
+and (soon) on a phone — all from one codebase.
+
+Built with Svelte 5 + TypeScript, packaged for the desktop with Tauri v2.
 
 ## Prerequisites
 
-This project uses [mise](https://mise.jdx.dev) to pin and install its
-toolchain (Rust, `wasm-bindgen-cli`, itch.io's `butler`, and `binaryen`).
+All tools are pinned with [mise](https://mise.jdx.dev). Once per clone:
 
 ```sh
 mise install
+pnpm install
+```
+
+Building the **desktop** app additionally needs Tauri's system dependencies —
+see the [Tauri prerequisites](https://tauri.app/start/prerequisites/). On
+Debian/Ubuntu:
+
+```sh
+sudo apt install libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 ```
 
 ## Running
 
 ```sh
-mise run run
-```
-
-or, equivalently:
-
-```sh
-mise x -- cargo run
+pnpm dev              # in a browser, with hot reload
+pnpm desktop          # as a desktop app
 ```
 
 ## What's here
 
-- A splash screen ("Created using Bevy")
-- A menu screen listing available games as buttons (hover an unfinished game
-  for a "Work in progress" tooltip)
-- A Quit button
+- A splash screen, then a menu of ten games.
+- **Tic Tac Toe** is playable.
+- The other nine are placeholders and show a "Work in progress" note.
+
+## Development
+
+```sh
+pnpm lint             # Prettier + ESLint
+pnpm check            # svelte-check + tsc
+pnpm test             # Vitest unit and component tests
+pnpm e2e              # Playwright, against a production build
+pnpm build            # production build into dist/
+pnpm desktop:build    # desktop bundles (deb/AppImage, msi, dmg)
+```
+
+### Adding a game
+
+1. Create `src/games/<id>/` with a root `.svelte` component, keeping the rules
+   in a plain `.ts` file beside it so they can be unit-tested directly.
+2. Register it in `src/lib/games.ts`:
+
+```ts
+{
+  id: 'chess',
+  title: 'Chess',
+  status: 'ready',
+  load: () => import('../games/chess/Chess.svelte'),
+}
+```
+
+The menu, the `#/game/chess` route and code splitting all follow from that
+entry. Games left at `status: 'wip'` render as non-interactive placeholders.
 
 ## Project layout
 
 ```
 src/
-  main.rs    # app entry point, screen states
-  splash.rs  # splash screen
-  menu.rs    # menu screen, game list, quit button
-web/
-  index.html # HTML shell for the wasm/web build
+  lib/games.ts          the game registry — start here
+  lib/router.svelte.ts  hash router
+  lib/platform.ts       web / desktop / mobile differences
+  routes/               Splash, Menu, GameHost
+  components/           GameCard
+  games/<id>/           one directory per game
+src-tauri/              Tauri shell (Rust; not touched to add a game)
+e2e/                    Playwright specs
 ```
 
-## CI/CD
+## Releasing
 
-- **CI** (`.github/workflows/ci.yml`) runs on every push to `main` and every
-  PR: `cargo fmt --check`, `cargo clippy`, `cargo test`, and a release build,
-  each on Linux, macOS, and Windows.
-- **Release** (`.github/workflows/release.yml`) runs when a tag matching
-  `v*.*.*` is pushed. It builds Linux (x86_64), Windows (x86_64), macOS
-  (universal x86_64+arm64), and a web/wasm build; attaches all of them to a
-  GitHub Release; and, if configured, pushes each build to itch.io via
-  `butler`.
-
-To enable the itch.io publish step, set in the repo's GitHub settings:
-
-- Variable `ITCH_TARGET` — your `user/game` itch.io slug
-- Secret `BUTLER_API_KEY` — an itch.io API key
-  (https://itch.io/user/settings/api-keys)
-
-Without both, the itch.io job is skipped automatically and only the GitHub
-Release is published.
-
-To cut a release:
+Push a tag:
 
 ```sh
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.1.0 && git push origin v0.1.0
 ```
+
+That builds desktop bundles for Linux, Windows and macOS (universal) plus a web
+build, and publishes them to GitHub Releases.
+
+To also publish to itch.io, set the repo variable `ITCH_TARGET` to your
+`user/game` slug and the repo secret `BUTLER_API_KEY` to an
+[itch.io API key](https://itch.io/user/settings/api-keys). Without both, the
+itch step is skipped.
+
+## History
+
+This started as a [Bevy](https://bevyengine.org) (Rust) app. It was migrated to
+TypeScript to make web, desktop and mobile a single build rather than four
+cross-compilation targets. The Bevy version is preserved in git history at
+commit `5992733`.

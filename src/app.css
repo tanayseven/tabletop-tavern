@@ -1,0 +1,86 @@
+/*
+ * Design tokens carried over from the Bevy build. Bevy's `Color::srgb()` takes
+ * nonlinear sRGB components in 0..1, so each value below is the old constant
+ * multiplied by 255 -- these are the same colours, not an approximation.
+ */
+:root {
+  --bg-page: #1a1a1f; /* srgb(0.10, 0.10, 0.12) */
+  --bg-splash: #000000; /* Color::BLACK */
+
+  --btn: #333340; /* srgb(0.20, 0.20, 0.25) */
+  --btn-hover: #4d4d66; /* srgb(0.30, 0.30, 0.40) */
+  --btn-active: #268040; /* srgb(0.15, 0.50, 0.25) */
+
+  --quit: #592626; /* srgb(0.35, 0.15, 0.15) */
+  --quit-hover: #803333; /* srgb(0.50, 0.20, 0.20) */
+  --quit-active: #991a1a; /* srgb(0.60, 0.10, 0.10) */
+
+  --tooltip-bg: rgba(0, 0, 0, 0.85);
+  --text: #ffffff;
+  --text-muted: #a0a0ad;
+  --focus-ring: #8ab4ff;
+
+  /* Spacing, matching the old Node/UiRect values. */
+  --gap-page: 24px;
+  --gap-grid: 16px;
+  --pad-btn: 12px;
+  --pad-page: 16px;
+  --grid-max: 700px;
+
+  /* Type scale, from the old `FontSize::Px` values. */
+  --fs-splash: clamp(2rem, 9vw, 3rem); /* 48px */
+  --fs-title: clamp(1.75rem, 7vw, 2.5rem); /* 40px */
+  --fs-button: clamp(1rem, 4.2vw, 1.5rem); /* 24px */
+  --fs-note: 1rem; /* 16px */
+
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--bg-page);
+  color: var(--text);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    Arial,
+    sans-serif;
+  line-height: 1.3;
+  /* The app manages its own scrolling; this stops iOS rubber-banding the shell. */
+  overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  height: 100%;
+}
+
+/* Text selection and the native long-press callout make a game board feel like
+   a document rather than an app. Re-enable per element where it makes sense. */
+button {
+  font: inherit;
+  color: inherit;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}

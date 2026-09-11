@@ -1,0 +1,30 @@
+[package]
+name = "tabletop-tavern"
+version = "0.2.0"
+description = "A collection of tabletop games."
+authors = ["Tanay PrabhuDesai"]
+license = "MIT"
+edition = "2021"
+rust-version = "1.77.2"
+
+# This crate is the Tauri shell only -- it opens a window and points it at the
+# built Svelte app in ../dist. All game code lives in ../src as TypeScript;
+# adding a game never means touching Rust.
+
+[lib]
+name = "app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.6.3", features = [] }
+
+[dependencies]
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+tauri = { version = "2.11.3", features = [] }
+tauri-plugin-log = "2"
+
+# Backs the desktop-only Quit button (src/lib/platform.ts).
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-process = "2"
