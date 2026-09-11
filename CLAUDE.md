@@ -50,25 +50,43 @@ pushing; CI fails on unformatted code.
 - `src/games/<id>/` — one directory per game
 - `src-tauri/` — the Tauri shell
 - `e2e/` — Playwright specs
+- `docs/` — game design documents
+
+## Docs
+
+- `docs/*.md` game design/planning documents describe scope, rules, and
+  behavior only — no code-specific details (file paths, function/type names,
+  code blocks). They should stay readable to someone who doesn't read code.
+
+This is why `docs/tic-tac-toe.md` survived the migration from Bevy unchanged: it
+described behaviour rather than Rust, so it remained the spec for the TypeScript
+rewrite. Keep new game docs to that standard.
 
 ## Conventions
 
 ### Adding a game
 
-1. Create `src/games/<id>/`, with the root component and any logic in plain `.ts`
-   next to it (see `tic-tac-toe/logic.ts` — pure functions, easy to unit test).
+1. Create `src/games/<id>/`, keeping the rules in plain `.ts` files beside the
+   component so they can be unit-tested without rendering anything. Tic Tac Toe
+   is the worked example: `board.ts` (rules), `ai.ts` (opponent), `setup.ts`
+   (pre-game flow), and a thin `TicTacToe.svelte` over the top.
 2. Add an entry to `GAMES` in `src/lib/games.ts` with `status: 'ready'` and a
    `load: () => import(...)`.
 
 Nothing else needs to change. The dynamic import is what keeps each game in its
 own chunk, so the menu doesn't pay for games nobody opened. Games without a
-`load` render as "Work in progress" and are non-interactive.
+`load` render a "Coming soon" label and are non-interactive.
 
 ### Design tokens
 
 All colours, spacing and font sizes live as custom properties in `src/app.css`
 and are carried over from the Bevy build (its `Color::srgb()` values ×255).
 Don't hardcode colours in a component — use the variables.
+
+Menu buttons scale with the viewport: `--card-width` / `--card-height` are
+`clamp()`ed vmin values matching the Bevy build's `GAME_BUTTON_VMIN` constants,
+and the label font is a fixed fraction of the clamped height so it tracks the
+button instead of drifting at the extremes.
 
 ### Layout traps this codebase has already hit
 
@@ -77,12 +95,19 @@ Don't hardcode colours in a component — use the variables.
   the documented fix, but Vite's CSS minifier drops the `safe` keyword and
   silently restores the bug. Use `margin-block: auto` on the content instead —
   see `Menu.svelte`. There's a regression test in `e2e/app.spec.ts`.
-- **Hover is not universal.** Hover-only affordances are invisible on a phone.
-  Gate them on `@media (hover: hover) and (pointer: fine)` and provide an
-  always-visible fallback, as `GameCard.svelte` does for the WIP note.
+- **Don't size a grid item as a percentage of an `auto` column.** It's circular,
+  and the item silently collapses to its text width. Put the explicit width on
+  `grid-template-columns` and let the item fill it — see `Menu.svelte`.
+- **Hover is not universal.** Hover-only affordances are invisible on a phone,
+  which is why the "Coming soon" label is always visible rather than a tooltip.
+  If you do add one, gate it on `@media (hover: hover) and (pointer: fine)` and
+  provide a fallback.
 - **Text inside a button becomes part of its accessible name.** If a button
   carries supplementary text, give it an explicit `aria-label` so screen readers
   announce the name and the description separately.
+- **`@keyframes` offsets can't use `var()`.** Where a timeline exists in both TS
+  and CSS (the splash), keep the constants in a module and add a test that reads
+  the component and pins the two together — see `splash-timeline.test.ts`.
 
 ### Platform differences
 

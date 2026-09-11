@@ -32,8 +32,9 @@ pnpm desktop          # as a desktop app
 ## What's here
 
 - A splash screen, then a menu of ten games.
-- **Tic Tac Toe** is playable.
-- The other nine are placeholders and show a "Work in progress" note.
+- **Tic Tac Toe** is playable: hot-seat or against a computer opponent at four
+  difficulty levels, with a coin toss, mark choice and a session scoreboard.
+- The other nine are placeholders and show a "Coming soon" label.
 
 ## Development
 

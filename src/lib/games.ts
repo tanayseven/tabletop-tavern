@@ -21,12 +21,19 @@ export interface GameEntry {
  *
  * To ship a game: add its component under `src/games/<id>/`, point `load` at it,
  * and flip `status` to `'ready'`. Nothing else needs to change.
+ *
+ * Order is deliberate -- playable games come first.
  */
 export const GAMES: readonly GameEntry[] = [
+  {
+    id: 'tic-tac-toe',
+    title: 'Tic Tac Toe',
+    status: 'ready',
+    load: () => import('../games/tic-tac-toe/TicTacToe.svelte'),
+  },
+  { id: 'advanced-tic-tac-toe', title: 'Advanced Tic Tac Toe', status: 'wip' },
   { id: 'mini-sudoku', title: 'Mini Sudoku', status: 'wip' },
   { id: 'sudoku', title: 'Sudoku', status: 'wip' },
-  { id: 'tic-tac-toe', title: 'Tic Tac Toe', status: 'wip' },
-  { id: 'advanced-tic-tac-toe', title: 'Advanced Tic Tac Toe', status: 'wip' },
   { id: 'ludo', title: 'Ludo', status: 'wip' },
   { id: 'snakes-and-ladders', title: 'Snakes and Ladders', status: 'wip' },
   { id: 'chess', title: 'Chess', status: 'wip' },
@@ -35,7 +42,7 @@ export const GAMES: readonly GameEntry[] = [
   { id: 'solitaire', title: 'Solitaire', status: 'wip' },
 ]
 
-export const WIP_NOTE = 'Work in progress'
+export const WIP_NOTE = 'Coming soon'
 
 export function findGame(id: string): GameEntry | undefined {
   return GAMES.find((game) => game.id === id)

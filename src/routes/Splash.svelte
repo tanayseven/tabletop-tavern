@@ -1,7 +1,7 @@
 <script lang="ts">
   import { router } from '../lib/router.svelte'
+  import { TOTAL_MS } from './splash-timeline'
 
-  const DURATION_MS = 2000
   const SEEN_KEY = 'tt:splash-seen'
 
   /**
@@ -34,18 +34,24 @@
       done()
       return
     }
-    const timer = setTimeout(done, DURATION_MS)
+    const timer = setTimeout(done, TOTAL_MS)
     // Cleanup matters: without it, a player who skips ahead gets bounced back
-    // to the menu two seconds later, mid-game.
+    // to the menu seconds later, mid-game.
     return () => clearTimeout(timer)
   })
 </script>
 
+<!-- Any key or click skips the timeline: a returning player shouldn't sit
+     through seven seconds of splash every time. -->
 <svelte:window onkeydown={done} />
 
-<!-- Skippable, but not announced: it's a courtesy, not a control worth
-     interrupting a screen reader for. The page is only up for two seconds. -->
-<div class="splash" onclick={done} role="presentation">
+<div
+  class="splash"
+  style="--total: {TOTAL_MS}ms"
+  onclick={done}
+  role="presentation"
+>
+  <p class="kicker">Welcome to the</p>
   <h1>Tabletop Tavern</h1>
 </div>
 
@@ -53,11 +59,20 @@
   .splash {
     height: 100%;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    row-gap: var(--gap-page);
     padding: var(--pad-page);
     background: var(--bg-splash);
     cursor: pointer;
+    animation: splash-fade var(--total) linear forwards;
+  }
+
+  .kicker {
+    margin: 0;
+    font-size: 2rem;
+    color: var(--text);
   }
 
   h1 {
@@ -67,20 +82,29 @@
     letter-spacing: 0.02em;
     text-align: center;
     color: var(--text);
-    animation: fade-in 400ms ease-out both;
   }
 
-  @keyframes fade-in {
-    from {
+  /* Keyframe offsets must be literal percentages -- `var()` is not allowed in
+     a keyframe selector -- so these mirror the timeline constants above:
+     3s fade in (3/7 = 42.86%), hold to 5s (5/7 = 71.43%), then fade out.
+     The `splash timeline` test in Splash.test.ts fails if they drift apart. */
+  @keyframes splash-fade {
+    0% {
       opacity: 0;
     }
-    to {
+    42.86% {
       opacity: 1;
+    }
+    71.43% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    h1 {
+    .splash {
       animation: none;
     }
   }

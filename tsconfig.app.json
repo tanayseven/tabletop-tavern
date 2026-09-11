@@ -4,7 +4,9 @@
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
     "target": "es2023",
     "module": "esnext",
-    "types": ["svelte", "vite/client"],
+    // "node" is here for the handful of tests that read source files off disk
+    // (see splash-timeline.test.ts, which pins CSS keyframes to TS constants).
+    "types": ["svelte", "vite/client", "node"],
     "allowArbitraryExtensions": true,
     "noEmit": true,
     /**

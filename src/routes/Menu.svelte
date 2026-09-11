@@ -59,6 +59,7 @@
     width: 100%;
     max-width: var(--grid-max);
     margin-block: auto;
+    padding-block: var(--pad-page);
   }
 
   h1 {
@@ -68,13 +69,27 @@
     text-align: center;
   }
 
+  /* Two per row, as an explicit grid rather than a wrapping flex row. The cards
+     are clamped to a minimum width, so a wrapping row would fit three or four
+     per line on a wide window instead of the intended two. */
   .grid {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    /* Explicit column widths rather than `auto`: a card sized as a percentage
+       of an `auto` column is circular, and collapses the card to its text. */
+    grid-template-columns: repeat(2, var(--card-width));
     justify-content: center;
-    gap: var(--gap-grid);
+    row-gap: 32px;
+    column-gap: var(--gap-grid);
     width: 100%;
     max-width: var(--grid-max);
+  }
+
+  /* Two 220px cards plus the gap don't fit a phone, so drop to one column
+     before they start overflowing. The Bevy build never had to handle this. */
+  @media (max-width: 520px) {
+    .grid {
+      grid-template-columns: minmax(0, var(--card-width));
+    }
   }
 
   .quit {

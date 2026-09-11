@@ -15,9 +15,8 @@
   --quit-hover: #803333; /* srgb(0.50, 0.20, 0.20) */
   --quit-active: #991a1a; /* srgb(0.60, 0.10, 0.10) */
 
-  --tooltip-bg: rgba(0, 0, 0, 0.85);
   --text: #ffffff;
-  --text-muted: #a0a0ad;
+  --text-muted: #8c8c8c; /* srgb(0.55, 0.55, 0.55) — the "Coming soon" grey */
   --focus-ring: #8ab4ff;
 
   /* Spacing, matching the old Node/UiRect values. */
@@ -25,7 +24,15 @@
   --gap-grid: 16px;
   --pad-btn: 12px;
   --pad-page: 16px;
-  --grid-max: 700px;
+  --grid-max: 1000px;
+
+  /* Menu buttons scale with the smaller viewport dimension, clamped so they go
+     neither unreadably small nor comically large. Carried over from the Bevy
+     build's GAME_BUTTON_VMIN / MIN_PX / MAX_PX; width is the same doubled.
+     These live here rather than on the card because the grid needs them to
+     size its columns -- a card sized against an `auto` column is circular. */
+  --card-height: clamp(110px, 22vmin, 240px);
+  --card-width: clamp(220px, 44vmin, 480px);
 
   /* Type scale, from the old `FontSize::Px` values. */
   --fs-splash: clamp(2rem, 9vw, 3rem); /* 48px */
