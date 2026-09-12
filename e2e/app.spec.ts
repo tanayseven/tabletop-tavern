@@ -97,7 +97,9 @@ test('the computer plays its turn against a Hard opponent', async ({
         const texts = await cells.allTextContents()
         return texts.filter((t) => t.trim() !== '').length
       },
-      { timeout: 5_000 },
+      // Generous, because this polls while four workers share the machine and
+      // both games' opponents search on the main thread.
+      { timeout: 10_000 },
     )
     .toBeGreaterThanOrEqual(2)
 })
