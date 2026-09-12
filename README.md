@@ -34,7 +34,11 @@ pnpm desktop          # as a desktop app
 - A splash screen, then a menu of ten games.
 - **Tic Tac Toe** is playable: hot-seat or against a computer opponent at four
   difficulty levels, with a coin toss, mark choice and a session scoreboard.
-- The other nine are placeholders and show a "Coming soon" label.
+- **Advanced Tic Tac Toe** is playable: the variant usually called Ultimate Tic
+  Tac Toe, on nine small boards, where the cell you play inside a board decides
+  which board your opponent must play in next. Same setup flow and four
+  difficulty levels.
+- The other eight are placeholders and show a "Coming soon" label.
 
 ## Development
 

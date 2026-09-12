@@ -1,3 +1,6 @@
+import { pick } from '../shared/difficulty'
+import type { Difficulty, DifficultyOption, Rng } from '../shared/difficulty'
+import { CENTER, CORNERS, SIDES } from '../shared/grid3'
 import {
   emptyCells,
   other,
@@ -7,13 +10,9 @@ import {
   type Player,
 } from './board'
 
-export type Difficulty = 'very-easy' | 'easy' | 'medium' | 'hard'
+export type { Difficulty, Rng } from '../shared/difficulty'
 
-export const DIFFICULTIES: readonly {
-  id: Difficulty
-  label: string
-  blurb: string
-}[] = [
+export const DIFFICULTIES: readonly DifficultyOption[] = [
   { id: 'very-easy', label: 'Very Easy', blurb: 'Moves completely at random.' },
   {
     id: 'easy',
@@ -32,13 +31,6 @@ export const DIFFICULTIES: readonly {
   },
 ]
 
-/** Injectable so tests can make the random difficulties deterministic. */
-export type Rng = () => number
-
-function pick<T>(items: readonly T[], rng: Rng): T {
-  return items[Math.floor(rng() * items.length)]
-}
-
 /** A move that would complete one of `mark`'s lines right now, if any. */
 function winningMove(board: Board, mark: Player): number | null {
   for (const index of emptyCells(board)) {
@@ -49,9 +41,6 @@ function winningMove(board: Board, mark: Player): number | null {
   return null
 }
 
-const CENTER = 4
-const CORNERS = [0, 2, 6, 8]
-const SIDES = [1, 3, 5, 7]
 const OPPOSITE_CORNER: readonly (readonly [number, number])[] = [
   [0, 8],
   [2, 6],

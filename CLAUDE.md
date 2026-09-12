@@ -4,7 +4,8 @@ A collection of tabletop games, built as a Svelte 5 + TypeScript SPA and shipped
 to web, desktop (Tauri v2) and — eventually — mobile from one codebase.
 
 Currently: a splash screen that transitions into a menu of game buttons. Tic Tac
-Toe is playable; the other nine entries are placeholders.
+Toe and Advanced Tic Tac Toe are playable; the other eight entries are
+placeholders.
 
 This was a Bevy (Rust) app until the migration on the `ts-migration` branch. If
 you need the original, it's at commit `5992733`.
@@ -48,6 +49,11 @@ pushing; CI fails on unformatted code.
 - `src/routes/` — `Splash`, `Menu`, `GameHost`
 - `src/components/GameCard.svelte` — one menu button
 - `src/games/<id>/` — one directory per game
+- `src/games/shared/` — rule code belonging to no single game: the 3x3 line
+  geometry (`grid3.ts`), the pre-game setup flow (`setup.ts`), and the
+  difficulty vocabulary (`difficulty.ts`). It sits under `src/games/` rather
+  than `src/lib/` because everything in `src/lib/` is shell infrastructure that
+  knows nothing about game rules
 - `src-tauri/` — the Tauri shell
 - `e2e/` — Playwright specs
 - `docs/` — game design documents
@@ -60,22 +66,41 @@ pushing; CI fails on unformatted code.
 
 This is why `docs/tic-tac-toe.md` survived the migration from Bevy unchanged: it
 described behaviour rather than Rust, so it remained the spec for the TypeScript
-rewrite. Keep new game docs to that standard.
+rewrite. Keep new game docs to that standard — `docs/advanced-tic-tac-toe.md`
+follows it, and was written and reviewed before any of that game was built.
+
+Where two docs disagree, say so in the newer one. Tic Tac Toe's Hard plays
+perfectly because that game can be searched to the end; Advanced Tic Tac Toe's
+cannot, so its doc states plainly that Hard is strong but beatable rather than
+quietly reusing the older promise.
 
 ## Conventions
 
 ### Adding a game
 
-1. Create `src/games/<id>/`, keeping the rules in plain `.ts` files beside the
+1. Check `src/games/shared/` first — the 3x3 line geometry, the pre-game setup
+   flow (mode → difficulty → toss → mark → play) and the `Difficulty`/`Rng`
+   vocabulary are already there, and both existing games use all three.
+2. Create `src/games/<id>/`, keeping the rules in plain `.ts` files beside the
    component so they can be unit-tested without rendering anything. Tic Tac Toe
-   is the worked example: `board.ts` (rules), `ai.ts` (opponent), `setup.ts`
-   (pre-game flow), and a thin `TicTacToe.svelte` over the top.
-2. Add an entry to `GAMES` in `src/lib/games.ts` with `status: 'ready'` and a
+   is the worked example: `board.ts` (rules), `ai.ts` (opponent), and a thin
+   `TicTacToe.svelte` over the top. Advanced Tic Tac Toe is the second one, and
+   names its rules module `game.ts` because with two board levels in play
+   `board.ts` would be ambiguous.
+3. Add an entry to `GAMES` in `src/lib/games.ts` with `status: 'ready'` and a
    `load: () => import(...)`.
 
 Nothing else needs to change. The dynamic import is what keeps each game in its
 own chunk, so the menu doesn't pay for games nobody opened. Games without a
 `load` render a "Coming soon" label and are non-interactive.
+
+**Don't import one game's modules from another.** That quietly turns its rule
+module into a public API and the first game can no longer change it freely.
+Promote the shared part into `src/games/shared/` instead — but only when it is
+genuinely game-agnostic and has at least two real consumers. Anything that
+lands there needs a signature that doesn't assume one game's shape: `grid3.ts`
+works on a bare `Cell[]` rather than a `Board` precisely so it can serve the
+cells of a small board and the nine board owners above them.
 
 ### Design tokens
 
@@ -139,12 +164,29 @@ button instead of drifting at the extremes.
 - **Don't size a grid item as a percentage of an `auto` column.** It's circular,
   and the item silently collapses to its text width. Put the explicit width on
   `grid-template-columns` and let the item fill it — see `Menu.svelte`.
-- **Set both grid axes when every track must stay equal.** `grid-template-columns`
-  alone leaves the rows implicit and therefore content-sized, so a textless cell
-  is short and grows the moment content lands in it — which resized the Tic Tac
-  Toe board on every move. `aspect-ratio` on the container doesn't save you; it
-  fixes the container, not the track distribution. There's a regression test in
-  `e2e/app.spec.ts`.
+- **Set both grid axes when every track must stay equal — at _every_ nesting
+  level.** `grid-template-columns` alone leaves the rows implicit and therefore
+  content-sized, so a textless cell is short and grows the moment content lands
+  in it — which resized the Tic Tac Toe board on every move. `aspect-ratio` on
+  the container doesn't save you; it fixes the container, not the track
+  distribution. The Advanced Tic Tac Toe board is two nested grids and needs
+  both axes on both. There's a regression test for each in `e2e/app.spec.ts`.
+- **A grid or flex item won't shrink below its content by default.** `min-width`
+  and `min-height` are `auto` on items, so a large glyph blows out a track
+  instead of overflowing its own box. Every item in both of Advanced Tic Tac
+  Toe's grids sets `min-width: 0; min-height: 0` — without it the owner glyph
+  un-squares the whole board at small sizes. Related: anything overlaid on a
+  track (that owner glyph) must be absolutely positioned, so it never takes
+  part in sizing the tracks underneath it.
+- **`opacity` blends an element into whatever is behind it, which may be a
+  themed colour.** Dimming the unplayable boards with `opacity` darkened them in
+  the light palette and washed them out in the dark one, because the surface
+  behind them is `--game-grid` — dark in one theme and light in the other. If a
+  signal has to read the same in both, change the element's own colour with
+  `color-mix()` rather than fading it. Check both palettes before believing a
+  screenshot, and let the transitions settle first: the cells carry a 120ms
+  `background-color` transition, so a shot taken straight after a theme switch
+  catches the palette mid-fade and is worth nothing.
 - **Don't insert content into a centred column mid-interaction.** Conditionally
   rendering the Tic Tac Toe endgame buttons grew the column at game over and
   shunted the board 35px upwards just as the player was looking at it. Render
@@ -175,18 +217,29 @@ stay in agreement: the `cfg` in `src-tauri/Cargo.toml`, `platforms` in
 because `index.html` carries an inline anti-flash background style; `script-src`
 is `'self'` and should stay that way.
 
-**The desktop window is portrait (600×900), and that's deliberate.** The board
-is `min(90vw, 55vh, 420px)`, so it stops growing at 420px — reached at any width
-from ~470px once the window is ~764px tall. Extra width past that is empty
-margin either side of the board, while the menu's ten cards need the height: at
-a 1024×768 landscape window the menu scrolls 408px, at 600×900 it scrolls 91px,
+**The desktop window is portrait (600×900), and that's deliberate.** Both games
+size their board with the same rule — `min(90vw, 55vh, 420px)` — so there is one
+number to reason about; it stops growing at 420px, reached at any width from
+~470px once the window is ~764px tall. Extra width past that is empty margin
+either side of the board, while the menu's ten cards need the height: at a
+1024×768 landscape window the menu scrolls 408px, at 600×900 it scrolls 91px,
 and at 600×1000 it doesn't scroll at all. 1000 isn't the default because a
-1366×768 or 1280×800 laptop would open it partly off-screen.
+1366×768 or 1280×800 laptop would open it partly off-screen. An 81-cell board is
+height-bound in a way a 9-cell one isn't, so Advanced Tic Tac Toe strengthens
+the portrait choice rather than straining it.
 
 The minimums (400×600) are where things actually break rather than merely look
 cramped: below 400px wide the score line wraps and the endgame buttons can't sit
 side by side (`min-width: 160px` each), so the game screen overflows at any
 height; below ~600px tall the board screen overflows too.
+
+Advanced Tic Tac Toe is now what the minimum is really pinned by. Sharing the
+420px cap puts its cells at roughly 39px in the default window and 29px at
+400×600 — cramped, but still clickable, and the board stays square with no
+sideways scroll (there's an e2e test at exactly that size). Growing this game's
+board past Tic Tac Toe's was considered and rejected: one sizing rule across
+both games is worth more than a few pixels per cell. Revisit if a third game
+wants a different shape.
 
 Worth revisiting if Solitaire or a large Minesweeper lands — nine of the ten
 games in the registry are square boards, which is what makes portrait the right
