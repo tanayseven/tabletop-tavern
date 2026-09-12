@@ -116,6 +116,33 @@ test('the title stays reachable when the games overflow the screen', async ({
   expect(box!.y).toBeGreaterThanOrEqual(0)
 })
 
+test('only the card list scrolls, not the whole menu', async ({ page }) => {
+  await page.goto('/#/menu')
+  await page.setViewportSize({ width: 390, height: 500 })
+
+  const title = page.getByRole('heading', { name: 'Tabletop Tavern' })
+  const before = await title.boundingBox()
+
+  // The cards overflow at this size -- that overflow has to live in .scroller
+  // and nowhere else, so the title and Quit stay put while the list moves.
+  const overflows = (selector: string) =>
+    page.locator(selector).evaluate((el) => el.scrollHeight > el.clientHeight)
+
+  expect(await overflows('.scroller')).toBe(true)
+  expect(await overflows('.page')).toBe(false)
+  expect(await overflows('body')).toBe(false)
+
+  await page
+    .locator('.scroller')
+    .evaluate((el) => el.scrollTo(0, el.scrollHeight))
+  await expect
+    .poll(() => page.locator('.scroller').evaluate((el) => el.scrollTop))
+    .toBeGreaterThan(0)
+
+  // Scrolling the list moved the cards, but not the heading above them.
+  expect(await title.boundingBox()).toEqual(before)
+})
+
 test('an unknown game id falls back to the menu', async ({ page }) => {
   await page.goto('/#/game/not-a-real-game')
   await expect(page.getByText(/There's no game called/)).toBeVisible()

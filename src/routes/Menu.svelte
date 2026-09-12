@@ -8,15 +8,18 @@
   <div class="content">
     <h1>Tabletop Tavern</h1>
 
-    <!-- The Bevy version chunked these into explicit rows of three to dodge a
-         taffy layout bug (see the old src/menu.rs). CSS has no such bug, so this
-         is a plain wrapping flex row -- which also happens to be what makes the
-         menu work on a narrow phone. Flex (not grid) so the short final row
-         stays centred, matching how the ten buttons used to look. -->
-    <div class="grid">
-      {#each GAMES as game (game.id)}
-        <GameCard {game} />
-      {/each}
+    <!-- The only scrolling element on the screen: the title above and Quit
+         below stay put while the cards move. -->
+    <div class="scroller">
+      <!-- The Bevy version chunked these into explicit rows of three to dodge
+           a taffy layout bug (see the old src/menu.rs). CSS has no such bug, so
+           this is a plain grid -- which also happens to be what makes the menu
+           work on a narrow phone. -->
+      <div class="grid">
+        {#each GAMES as game (game.id)}
+          <GameCard {game} />
+        {/each}
+      </div>
     </div>
 
     {#if isDesktopApp}
@@ -37,7 +40,9 @@
     padding-top: max(var(--pad-page), env(safe-area-inset-top));
     padding-bottom: max(var(--pad-page), env(safe-area-inset-bottom));
     background: var(--bg-page);
-    overflow-y: auto;
+    /* The page itself never scrolls -- only the card list does, so the title
+       and Quit stay put. */
+    overflow: hidden;
   }
 
   /*
@@ -50,6 +55,9 @@
    * silently reintroduces the bug. Auto margins behave the same way and survive
    * minification: they centre when there's room and collapse to 0 when there
    * isn't.
+   *
+   * `max-height` is what caps this at the viewport once the cards no longer
+   * fit; past that point the auto margins collapse and .scroller takes over.
    */
   .content {
     display: flex;
@@ -58,15 +66,34 @@
     row-gap: var(--gap-page);
     width: 100%;
     max-width: var(--grid-max);
+    max-height: 100%;
+    min-height: 0;
     margin-block: auto;
     padding-block: var(--pad-page);
   }
 
   h1 {
+    flex: none;
     margin: 0;
     font-size: var(--fs-title);
     font-weight: 600;
     text-align: center;
+  }
+
+  /* The one scrolling element on the screen. `min-height: 0` is what lets it
+     shrink below the height of the cards inside it -- without it a flex item
+     refuses to go under its content size and the overflow escapes back onto
+     the page. The padding keeps focus rings on the outermost cards from being
+     clipped by the scroll container's edge. */
+  .scroller {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    padding: 6px;
+    overflow: hidden auto;
+    overscroll-behavior: contain;
   }
 
   /* Two per row, as an explicit grid rather than a wrapping flex row. The cards
@@ -82,6 +109,9 @@
     column-gap: var(--gap-grid);
     width: 100%;
     max-width: var(--grid-max);
+    /* Same auto-margin trick as .content: centre the cards in the scroller
+       when they fit, collapse to the top edge when they don't. */
+    margin-block: auto;
   }
 
   /* Two 220px cards plus the gap don't fit a phone, so drop to one column
