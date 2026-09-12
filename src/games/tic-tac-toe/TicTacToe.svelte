@@ -21,7 +21,7 @@
     type Coin,
     type Mode,
     type Setup,
-  } from './setup'
+  } from '../shared/setup'
   import { router } from '../../lib/router.svelte'
 
   /** How long the computer "thinks", so its move doesn't appear instantly. */

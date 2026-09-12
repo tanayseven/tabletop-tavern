@@ -1,5 +1,5 @@
-import type { Difficulty } from './ai'
-import type { Player } from './board'
+import type { Difficulty } from './difficulty'
+import type { Player } from './grid3'
 
 export type Mode = 'pvp' | 'pvc'
 export type Coin = 'heads' | 'tails'
