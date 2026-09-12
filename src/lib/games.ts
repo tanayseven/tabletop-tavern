@@ -1,4 +1,5 @@
 import type { Component } from 'svelte'
+import TicTacToePreview from '../games/tic-tac-toe/Preview.svelte'
 
 export type GameStatus = 'wip' | 'ready'
 
@@ -13,6 +14,16 @@ export interface GameEntry {
    * the menu doesn't pay for games nobody opened.
    */
   load?: () => Promise<{ default: Component }>
+  /**
+   * An optional decoration for the game's menu card — a miniature, silent
+   * demonstration of the game. Unlike `load` this is imported eagerly: it is
+   * menu chrome, shown before anyone clicks anything, so deferring it would
+   * only make the card appear empty and then fill in.
+   *
+   * It must be purely decorative (`aria-hidden`, no controls), because it
+   * renders inside the card's button.
+   */
+  preview?: Component
 }
 
 /**
@@ -30,6 +41,7 @@ export const GAMES: readonly GameEntry[] = [
     title: 'Tic Tac Toe',
     status: 'ready',
     load: () => import('../games/tic-tac-toe/TicTacToe.svelte'),
+    preview: TicTacToePreview,
   },
   {
     id: 'advanced-tic-tac-toe',

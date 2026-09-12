@@ -94,6 +94,13 @@ Nothing else needs to change. The dynamic import is what keeps each game in its
 own chunk, so the menu doesn't pay for games nobody opened. Games without a
 `load` render a "Coming soon" label and are non-interactive.
 
+A game may also add an optional `preview` to its registry entry: a miniature,
+silent demonstration that plays on its menu card. Tic Tac Toe is the worked
+example — a fixed script of moves replayed on a small board, not a real game
+against the AI. Unlike `load` it's imported eagerly, because it's menu chrome
+rather than game code, and it must be purely decorative (`aria-hidden`, no
+controls) since it renders inside the card's button.
+
 **Don't import one game's modules from another.** That quietly turns its rule
 module into a public API and the first game can no longer change it freely.
 Promote the shared part into `src/games/shared/` instead — but only when it is

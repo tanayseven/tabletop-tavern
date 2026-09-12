@@ -6,6 +6,8 @@
 
   const isWip = $derived(game.status === 'wip')
   const noteId = $derived(`wip-${game.id}`)
+  // Capitalised so it can be used as a component in the markup below.
+  const Preview = $derived(game.preview)
 
   function open() {
     if (isWip) return
@@ -27,6 +29,10 @@
        button's identity rather than as its description. -->
   {#if isWip}
     <span class="note" id={noteId}>{WIP_NOTE}</span>
+  {:else if Preview}
+    <!-- Decorative, and `aria-hidden` inside itself: a card that shows a game
+         playing must still announce as just its title. -->
+    <Preview />
   {/if}
   <span class="title">{game.title}</span>
 </button>

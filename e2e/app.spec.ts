@@ -22,6 +22,26 @@ test('lists every game', async ({ page }) => {
   await expect(page.locator('.grid button')).toHaveCount(GAME_COUNT)
 })
 
+test('the Tic Tac Toe card plays a game to itself', async ({ page }) => {
+  await page.goto('/#/menu')
+  const card = page.getByRole('button', { name: 'Tic Tac Toe', exact: true })
+  const preview = card.locator('.preview')
+  const marks = preview.locator('.mark')
+
+  // Square: the board is sized by height and `aspect-ratio`, which a flex
+  // parent will happily stretch if the item is allowed to grow.
+  const box = (await preview.boundingBox())!
+  expect(Math.abs(box.width - box.height)).toBeLessThanOrEqual(1)
+
+  // One pass is ~4.7s: seven moves, then the board clears and it starts over.
+  await expect(marks).toHaveCount(7, { timeout: 8000 })
+  await expect(marks).toHaveCount(0, { timeout: 5000 })
+
+  // The animation sits inside the button, so it must not swallow the click.
+  await preview.click()
+  await expect(page).toHaveURL(/#\/game\/tic-tac-toe$/)
+})
+
 test('work-in-progress games do not navigate', async ({ page }) => {
   await page.goto('/#/menu')
   const ludo = page.getByRole('button', { name: 'Ludo' })
