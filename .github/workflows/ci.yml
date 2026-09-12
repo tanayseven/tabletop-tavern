@@ -36,6 +36,15 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # Handed to `deploy` rather than rebuilt there, so the artifact that ships
+      # is byte-for-byte the one the e2e tests below ran against.
+      - uses: actions/upload-artifact@v4
+        if: github.ref == 'refs/heads/main'
+        with:
+          name: dist
+          path: dist
+          retention-days: 1
+
       - name: Install Playwright browser
         run: pnpm exec playwright install --with-deps chromium
 
@@ -85,3 +94,35 @@ jobs:
 
       - name: Check the Tauri shell
         run: cargo check --manifest-path src-tauri/Cargo.toml --locked
+
+  # Publishes the web build to the S3 bucket behind tabletoptavern.tanay.tech.
+  # The bucket, CloudFront distribution and IAM role are provisioned externally
+  # (tanayseven/personal-cloud); nothing here creates AWS resources.
+  #
+  # The role's trust policy only accepts
+  # `repo:tanayseven/tabletop-tavern:ref:refs/heads/main`, so this cannot run
+  # from a pull request or any other branch -- hence the `if` below.
+  deploy:
+    needs: [web, desktop]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      # Required to mint the OIDC token that configure-aws-credentials exchanges
+      # for the role. Without it the assume-role step fails.
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: 'arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-for-tabletop-tavern'
+          aws-region: us-east-1
+
+      # No CloudFront invalidation: the role is scoped to S3 only, so updates
+      # serve stale from the edge until the cache TTL expires.
+      - name: Deploy to S3
+        run: aws s3 cp --recursive dist/ s3://tabletoptavern.tanay.tech/
