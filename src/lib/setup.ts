@@ -1,11 +1,32 @@
-import type { Difficulty } from './ai'
-import type { Player } from './board'
+import type { Mark } from './grid'
+
+/**
+ * The pre-game setup flow — mode, difficulty, coin toss, mark — shared by every
+ * game that plays one human against another or against a computer.
+ *
+ * It is deliberately free of any one game's rules: the only thing it knows
+ * about a game is that two sides take turns and one of them holds X. The
+ * screens that render it live in `src/components/GameSetup.svelte`.
+ */
 
 export type Mode = 'pvp' | 'pvc'
 export type Coin = 'heads' | 'tails'
 
 /** Who the toss picked: the human ("first") or their opponent ("second"). */
 export type Role = 'first' | 'second'
+
+export type Difficulty = 'very-easy' | 'easy' | 'medium' | 'hard'
+
+/**
+ * One entry on the difficulty screen. The blurb is per-game: "plays perfectly"
+ * is true of Tic Tac Toe's Hard and emphatically not of Ultimate's, whose game
+ * tree is far too large to solve.
+ */
+export interface DifficultyOption {
+  id: Difficulty
+  label: string
+  blurb: string
+}
 
 export interface Setup {
   /** `null` until the mode is chosen — the first setup screen. */
@@ -15,7 +36,7 @@ export interface Setup {
   call: Coin | null
   flip: Coin | null
   /** The mark the toss winner chose; whoever holds it moves first. */
-  startingMark: Player | null
+  startingMark: Mark | null
 }
 
 export const EMPTY_SETUP: Setup = {
@@ -48,7 +69,7 @@ export function roleLabel(mode: Mode | null, role: Role): string {
  * Which role owns `mark`. The toss winner picked `startingMark`, so they own
  * it and the other side owns the opposite mark.
  */
-export function roleOf(setup: Setup, mark: Player): Role {
+export function roleOf(setup: Setup, mark: Mark): Role {
   const winner =
     setup.call && setup.flip ? tossWinner(setup.call, setup.flip) : 'first'
   if (mark === setup.startingMark) return winner
@@ -56,7 +77,7 @@ export function roleOf(setup: Setup, mark: Player): Role {
 }
 
 /** True when the computer should be the one to move `mark`. */
-export function isComputer(setup: Setup, mark: Player): boolean {
+export function isComputer(setup: Setup, mark: Mark): boolean {
   return setup.mode === 'pvc' && roleOf(setup, mark) === 'second'
 }
 

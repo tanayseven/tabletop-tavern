@@ -7,13 +7,11 @@ import {
   type Player,
 } from './board'
 
-export type Difficulty = 'very-easy' | 'easy' | 'medium' | 'hard'
+import type { Difficulty, DifficultyOption } from '../../lib/setup'
 
-export const DIFFICULTIES: readonly {
-  id: Difficulty
-  label: string
-  blurb: string
-}[] = [
+export type { Difficulty }
+
+export const DIFFICULTIES: readonly DifficultyOption[] = [
   { id: 'very-easy', label: 'Very Easy', blurb: 'Moves completely at random.' },
   {
     id: 'easy',
