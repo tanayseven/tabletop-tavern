@@ -4,6 +4,14 @@ on:
   push:
     branches: [main]
   pull_request:
+    branches: [main]
+
+# Required for OIDC federation with AWS: `configure-aws-credentials` mints the
+# short-lived token it trades for the deploy role. Without id-token: write the
+# role assumption fails. No static AWS keys exist anywhere in this repo.
+permissions:
+  id-token: write
+  contents: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -20,6 +28,7 @@ jobs:
 
       - uses: jdx/mise-action@v2
         with:
+          install: true
           cache: true
 
       - run: pnpm install --frozen-lockfile
@@ -49,6 +58,27 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
+      # Everything above runs on pull requests too; only main deploys. The
+      # role's trust policy permits this repository's refs/heads/main and
+      # nothing else, so a pull request cannot assume it even by accident --
+      # these two steps must stay gated or PR runs go red.
+      - name: Configure AWS credentials
+        if: github.ref == 'refs/heads/main'
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: 'arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-for-tabletop-tavern'
+          aws-region: us-east-1
+
+      # `dist/` is what `pnpm build` emits. The role can only touch this one
+      # bucket, and only PutObject / DeleteObject / GetObject / ListBucket --
+      # so no CloudFront invalidation (AccessDenied) and no --acl (the bucket
+      # uses ownership controls plus a public-read bucket policy, which reject
+      # ACL flags on upload).
+      - name: Deploy to S3
+        if: github.ref == 'refs/heads/main'
+        run: |
+          aws s3 cp --recursive dist/ s3://tabletoptavern.tanay.tech/
+
   # Catches breakage in the Tauri shell, which the `web` job never exercises.
   # Only builds the Rust side -- bundling is the release workflow's job.
   desktop:
@@ -69,6 +99,7 @@ jobs:
 
       - uses: jdx/mise-action@v2
         with:
+          install: true
           cache: true
 
       - uses: Swatinem/rust-cache@v2
