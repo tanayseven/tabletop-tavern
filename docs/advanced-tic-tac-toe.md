@@ -1,7 +1,7 @@
 # Advanced Tic Tac Toe — Implementation Plan
 
-Status: **planned** (nothing built yet; the menu button exists but is a
-placeholder).
+Status: **implemented** (match rules, computer opponent, and the same pre-game
+setup flow as Tic Tac Toe).
 
 ## Goal
 
