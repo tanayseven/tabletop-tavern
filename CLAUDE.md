@@ -4,7 +4,8 @@ A collection of tabletop games, built as a Svelte 5 + TypeScript SPA and shipped
 to web, desktop (Tauri v2) and — eventually — mobile from one codebase.
 
 Currently: a splash screen that transitions into a menu of game buttons. Tic Tac
-Toe is playable; the other nine entries are placeholders.
+Toe and Advanced Tic Tac Toe (Ultimate Tic Tac Toe) are playable; the other
+eight entries are placeholders.
 
 This was a Bevy (Rust) app until the migration on the `ts-migration` branch. If
 you need the original, it's at commit `5992733`.
@@ -45,8 +46,14 @@ pushing; CI fails on unformatted code.
   and for `/game/:id` routing
 - `src/lib/router.svelte.ts` — hash router (`#/`, `#/menu`, `#/game/:id`)
 - `src/lib/platform.ts` — `isDesktopApp` / `isWeb` / `quitApp()`
+- `src/lib/setup.ts` — the shared pre-game flow (mode → difficulty → coin toss →
+  mark) as pure logic; knows nothing about any game's rules
+- `src/lib/grid.ts` — 3x3 primitives (marks, the eight winning lines) shared by
+  both Tic Tac Toe games
 - `src/routes/` — `Splash`, `Menu`, `GameHost`
 - `src/components/GameCard.svelte` — one menu button
+- `src/components/GameSetup.svelte` — the setup screens over `src/lib/setup.ts`
+- `src/components/RoundEnd.svelte` — the "Play Again / Back to Menu" pair
 - `src/games/<id>/` — one directory per game
 - `src-tauri/` — the Tauri shell
 - `e2e/` — Playwright specs
@@ -68,10 +75,16 @@ rewrite. Keep new game docs to that standard.
 
 1. Create `src/games/<id>/`, keeping the rules in plain `.ts` files beside the
    component so they can be unit-tested without rendering anything. Tic Tac Toe
-   is the worked example: `board.ts` (rules), `ai.ts` (opponent), `setup.ts`
-   (pre-game flow), and a thin `TicTacToe.svelte` over the top.
+   is the worked example: `board.ts` (rules), `ai.ts` (opponent) and a thin
+   `TicTacToe.svelte` over the top.
 2. Add an entry to `GAMES` in `src/lib/games.ts` with `status: 'ready'` and a
    `load: () => import(...)`.
+
+Don't rebuild the pre-game flow. A two-player game renders `<GameSetup>`, hands
+it that game's own difficulty ladder (the blurbs are per-game — "plays
+perfectly" is true of Tic Tac Toe's Hard and false of Advanced's), and waits for
+its `onready` before starting a round. `<RoundEnd>` closes the round out. Both
+Tic Tac Toe games are the worked examples.
 
 Nothing else needs to change. The dynamic import is what keeps each game in its
 own chunk, so the menu doesn't pay for games nobody opened. Games without a

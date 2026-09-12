@@ -143,6 +143,83 @@ test('only the card list scrolls, not the whole menu', async ({ page }) => {
   expect(await title.boundingBox()).toEqual(before)
 })
 
+test('plays Advanced Tic Tac Toe, which routes you by the cell you pick', async ({
+  page,
+}) => {
+  await page.goto('/#/menu')
+  await page
+    .getByRole('button', { name: 'Advanced Tic Tac Toe', exact: true })
+    .click()
+
+  // The same setup sequence as the plain game -- it's the shared component.
+  await page.getByRole('button', { name: 'Player vs Player' }).click()
+  await page.getByRole('button', { name: 'Heads' }).click()
+  await page.getByRole('button', { name: 'Continue' }).click()
+  await page.getByRole('button', { name: 'X', exact: true }).click()
+
+  const board = page.getByRole('grid', { name: 'Ultimate Tic Tac Toe board' })
+  await expect(board).toBeVisible()
+  await expect(board.getByRole('button')).toHaveCount(81)
+
+  const cell = (name: string, row: number, column: number) =>
+    page.getByRole('button', {
+      name: new RegExp(`^${name} board, row ${row}, column ${column}`),
+    })
+
+  // The opening move may go anywhere.
+  await expect(page.getByText(/Free choice/)).toBeVisible()
+  await cell('top-left', 3, 1).click()
+  await expect(cell('top-left', 3, 1)).toHaveAccessibleName(/: X$/)
+
+  // Row 3, column 1 is the bottom-left cell, so O is sent to the bottom-left
+  // board -- and nowhere else.
+  await expect(page.getByText(/Play in the bottom-left board/)).toBeVisible()
+  await expect(cell('bottom-left', 1, 1)).toBeEnabled()
+  await expect(cell('top-left', 1, 1)).toBeDisabled()
+
+  await cell('bottom-left', 2, 2).click()
+  await expect(cell('bottom-left', 2, 2)).toHaveAccessibleName(/: O$/)
+
+  // Row 2, column 2 is the centre cell, so X is sent to the centre board.
+  await expect(page.getByText(/Play in the centre board/)).toBeVisible()
+  await expect(cell('centre', 1, 1)).toBeEnabled()
+  await expect(cell('bottom-left', 1, 1)).toBeDisabled()
+})
+
+test('the computer answers in Advanced Tic Tac Toe', async ({ page }) => {
+  await page.goto('/#/game/advanced-tic-tac-toe')
+
+  await page.getByRole('button', { name: 'Player vs Computer' }).click()
+  await page.getByRole('button', { name: /^Hard/ }).click()
+  await page.getByRole('button', { name: 'Heads' }).click()
+  await page.getByRole('button', { name: 'Continue' }).click()
+
+  // The mark screen only appears when the human wins the toss.
+  const markChoice = page.getByRole('button', { name: 'X', exact: true })
+  if (await markChoice.isVisible()) await markChoice.click()
+
+  const board = page.getByRole('grid', { name: 'Ultimate Tic Tac Toe board' })
+  await expect(board).toBeVisible()
+
+  const cells = board.getByRole('button')
+  const marked = async () => {
+    const names = await cells.evaluateAll((els) =>
+      els.map((el) => el.getAttribute('aria-label') ?? ''),
+    )
+    return names.filter((name) => !name.endsWith(': empty')).length
+  }
+
+  // Every cell is disabled while the computer is thinking, and when it is the
+  // human's turn only the board they were sent to opens up -- so take whatever
+  // is playable rather than naming a cell.
+  const open = board.locator('button:not([disabled])')
+  await expect(open.first()).toBeEnabled({ timeout: 10_000 })
+  await open.first().click()
+
+  // Whoever moved first, two marks are down shortly after that one click.
+  await expect.poll(marked, { timeout: 10_000 }).toBeGreaterThanOrEqual(2)
+})
+
 test('an unknown game id falls back to the menu', async ({ page }) => {
   await page.goto('/#/game/not-a-real-game')
   await expect(page.getByText(/There's no game called/)).toBeVisible()

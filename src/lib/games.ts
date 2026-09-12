@@ -31,7 +31,13 @@ export const GAMES: readonly GameEntry[] = [
     status: 'ready',
     load: () => import('../games/tic-tac-toe/TicTacToe.svelte'),
   },
-  { id: 'advanced-tic-tac-toe', title: 'Advanced Tic Tac Toe', status: 'wip' },
+  {
+    id: 'advanced-tic-tac-toe',
+    title: 'Advanced Tic Tac Toe',
+    status: 'ready',
+    load: () =>
+      import('../games/advanced-tic-tac-toe/AdvancedTicTacToe.svelte'),
+  },
   { id: 'mini-sudoku', title: 'Mini Sudoku', status: 'wip' },
   { id: 'sudoku', title: 'Sudoku', status: 'wip' },
   { id: 'ludo', title: 'Ludo', status: 'wip' },
